@@ -1,0 +1,10 @@
+{
+    "venvPath": "c:/Users/josep/ticket/gitrepo",
+    "venv": ".venv",
+    "include": ["joedatashit"],
+    "executionEnvironments": [
+        {
+            "root": "joedatashit"
+        }
+    ]
+}
