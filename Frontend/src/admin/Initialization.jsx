@@ -47,8 +47,7 @@ export default function Initialization() {
             // So we should probably save config first if user changed sliders here.
 
             await api.updateConfig(config);
-
-            const res = await api.post('/admin/reset-and-load-defaults');
+            const res = await api.resetAndLoadDefaults();
             setMessage(`Success! Created ${res.resources_created} resources and ${res.time_slots_created} slots.`);
         } catch (e) {
             setMessage(`Error: ${e.message}`)

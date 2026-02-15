@@ -80,6 +80,7 @@ const api = {
 
   // Admin Resources
   importResources: (formData) => request('/admin/import-resources', { method: 'POST', body: formData }),
+  resetAndLoadDefaults: () => request('/admin/reset-and-load-defaults', { method: 'POST' }),
 
   // God Mode (ML Models)
   autoPopulateMarket: (data) => request('/god/auto-populate', { method: 'POST', body: JSON.stringify(data) }),
