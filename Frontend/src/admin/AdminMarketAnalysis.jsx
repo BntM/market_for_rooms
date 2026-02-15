@@ -10,7 +10,7 @@ export default function AdminMarketAnalysis() {
         setLoading(true);
         setError(null);
         try {
-            const response = await api.request('/admin/market-analysis', { method: 'POST' });
+            const response = await api.post('/admin/market-analysis');
             setReport(response.report);
         } catch (e) {
             setError(e.message);
