@@ -106,17 +106,16 @@ async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
         
         # Take best 3 per exam
         for score, auction, slot in scored[:3]:
-            if auction.current_price <= max_price:
-                order = LimitOrder(
-                    id=str(uuid.uuid4()),
-                    agent_id=agent_id,
-                    time_slot_id=slot.id,
-                    max_price=max_price,
-                    status=LimitOrderStatus.PENDING
-                )
-                db.add(order)
-                used_auction_ids.add(auction.id)
-                orders_created += 1
+            order = LimitOrder(
+                id=str(uuid.uuid4()),
+                agent_id=agent_id,
+                time_slot_id=slot.id,
+                max_price=max_price,
+                status=LimitOrderStatus.PENDING
+            )
+            db.add(order)
+            used_auction_ids.add(auction.id)
+            orders_created += 1
     
     await db.commit()
     return {"orders_count": orders_created, "message": f"Created {orders_created} limit orders for {len(exams)} exams"}
