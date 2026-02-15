@@ -18,10 +18,10 @@ async def allocate_tokens(db: AsyncSession) -> list[Transaction]:
 
     transactions = []
     for agent in agents:
-        agent.token_balance += config.token_allocation_amount
+        agent.token_balance += config.token_starting_amount
         tx = Transaction(
             agent_id=agent.id,
-            amount=config.token_allocation_amount,
+            amount=config.token_starting_amount,
             type="allocation",
         )
         db.add(tx)

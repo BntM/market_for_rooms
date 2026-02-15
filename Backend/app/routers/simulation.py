@@ -80,7 +80,7 @@ async def reset_simulation(db: AsyncSession = Depends(get_db)):
     # Get admin config for default balance
     config_result = await db.execute(select(AdminConfig))
     config = config_result.scalar_one_or_none()
-    default_balance = config.token_allocation_amount if config else 100.0
+    default_balance = config.token_starting_amount if config else 100.0
 
     # Delete in dependency order
     await db.execute(delete(GroupBidMember))

@@ -57,7 +57,7 @@ async def seed_default_agents():
         if count and count > 0:
             return
         config = await db.scalar(select(AdminConfig))
-        balance = config.token_allocation_amount if config else 100.0
+        balance = config.token_starting_amount if config else 100.0
         for i in range(1, 7):
             db.add(Agent(name=f"User_{i}", token_balance=balance, max_bookings=10))
         await db.commit()
