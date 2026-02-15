@@ -13,6 +13,7 @@ import Initialization from './admin/Initialization'
 
 import AdminSchedule from './admin/AdminSchedule'
 
+// Main App Component with Routing
 export default function App() {
   return (
     <Routes>

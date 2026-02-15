@@ -10,9 +10,11 @@ export default function AdminSchedule() {
     const [location, setLocation] = useState('')
     const [loading, setLoading] = useState(true)
     const [viewDate, setViewDate] = useState(new Date())
+    const [error, setError] = useState(null)
 
     const load = async () => {
         setLoading(true)
+        setError(null)
         try {
             const start = new Date(viewDate)
             start.setHours(0, 0, 0, 0)
@@ -23,10 +25,11 @@ export default function AdminSchedule() {
                 api.getResources(),
                 api.getAuctions({ start_date: start.toISOString(), end_date: end.toISOString() }),
             ])
-            setResources(res)
-            setAuctions(auc)
+            setResources(res || [])
+            setAuctions(auc || [])
         } catch (e) {
             console.error(e)
+            setError("Failed to load schedule data. Please try again.")
         } finally {
             setLoading(false)
         }
@@ -40,10 +43,14 @@ export default function AdminSchedule() {
         setViewDate(next)
     }
 
-    const locations = [...new Set(resources.map((r) => r.location).filter(Boolean))]
+    const locations = [...new Set((resources || []).map((r) => r.location).filter(Boolean))]
     const filtered = location
-        ? resources.filter((r) => r.location === location)
-        : resources
+        ? (resources || []).filter((r) => r.location === location)
+        : (resources || [])
+
+    if (error) {
+        return <div className="card error" style={{ padding: '2rem', color: 'red' }}>{error}</div>
+    }
 
     return (
         <div>
@@ -93,7 +100,7 @@ export default function AdminSchedule() {
                 <div className="text-secondary" style={{ padding: '2rem' }}>Loading schedule...</div>
             ) : filtered.length === 0 ? (
                 <div className="card text-secondary" style={{ padding: '3rem', textAlign: 'center' }}>
-                    No rooms available.
+                    No rooms found. Please create rooms in the Room Manager.
                 </div>
             ) : (
                 <RoomTimeGrid
@@ -107,7 +114,7 @@ export default function AdminSchedule() {
             <SlotDetail
                 slot={selectedSlot}
                 auctions={auctions}
-                agent={null} // logic checks for agent to show buy button
+                agent={null}
                 onClose={() => setSelectedSlot(null)}
                 onBuyNow={() => { }}
                 onSetOrder={() => { }}
