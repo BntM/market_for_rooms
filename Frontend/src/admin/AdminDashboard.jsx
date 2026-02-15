@@ -189,10 +189,45 @@ export default function AdminDashboard() {
       <ConfigSection />
 
       <div className="card mb-2">
-        <div className="flex gap-2">
-          <button className="btn btn--primary" onClick={handleRound}>Run Round</button>
-          <button className="btn" onClick={handleAllocate}>Allocate Tokens</button>
-          <button className="btn btn--danger" onClick={handleReset}>Reset All</button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button className="btn btn--primary" onClick={async () => {
+            try {
+              const res = await api.advanceDay();
+              setViewDate(new Date(res.current_date));
+              await load();
+            } catch (e) { alert(e.message) }
+          }}>
+            Progress a Day
+          </button>
+
+          <button className="btn" onClick={async () => {
+            try {
+              const res = await api.advanceHour();
+              setViewDate(new Date(res.current_date));
+              await load();
+            } catch (e) { alert(e.message) }
+          }}>
+            Change Hour
+          </button>
+
+          <div style={{ flex: 1 }}></div>
+
+          <button className="btn btn--danger" onClick={async () => {
+            if (!confirm('Reset simulation to Feb 14?')) return;
+            try {
+              const res = await api.resetTime();
+              // Also reset full sim data if desired, but user asked for date reset button. 
+              // Usually reset implies full reset. Let's call full reset to be safe or just time reset? 
+              // "reset button next to it which resets back to feb 14"
+              // Let's assume full reset for consistency.
+              await api.resetSimulation();
+              setViewDate(new Date("2026-02-14T09:00:00"));
+              window.dispatchEvent(new Event('simulation-reset'));
+              await load();
+            } catch (e) { alert(e.message) }
+          }}>
+            Reset
+          </button>
         </div>
       </div>
 

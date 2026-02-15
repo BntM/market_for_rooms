@@ -1,4 +1,6 @@
-from sqlalchemy import Float, Integer, JSON, String
+from datetime import datetime
+
+from sqlalchemy import DateTime, Float, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -31,3 +33,7 @@ class AdminConfig(Base):
     day_of_week_weight: Mapped[float] = mapped_column(Float, default=1.0) # New
     global_price_modifier: Mapped[float] = mapped_column(Float, default=1.0)
     lead_time_sensitivity: Mapped[float] = mapped_column(Float, default=1.0)
+    
+    # Simulation State
+    current_simulation_date: Mapped[datetime] = mapped_column(DateTime, default=datetime(2026, 2, 14, 9, 0))
+    pricing_model_version: Mapped[int] = mapped_column(Integer, default=1)

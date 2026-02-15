@@ -78,6 +78,11 @@ const api = {
   runMarketSimulation: (config) => request('/history/simulate', { method: 'POST', body: JSON.stringify(config) }),
   optimizePrice: (config) => request('/history/optimize', { method: 'POST', body: JSON.stringify(config) }),
 
+  // Time Controls
+  advanceDay: () => request('/simulation/time/advance-day', { method: 'POST' }),
+  advanceHour: () => request('/simulation/time/advance-hour', { method: 'POST' }),
+  resetTime: () => request('/simulation/time/reset', { method: 'POST' }),
+
   // Admin Resources
   importResources: (formData) => request('/admin/import-resources', { method: 'POST', body: formData }),
   resetAndLoadDefaults: () => request('/admin/reset-and-load-defaults', { method: 'POST' }),

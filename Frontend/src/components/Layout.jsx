@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import api from '../api'
 import TokenBadge from './TokenBadge'
 
 const userNav = [
@@ -20,12 +21,59 @@ export default function Layout() {
   const isAdmin = location.pathname.startsWith('/admin')
   const nav = isAdmin ? adminNav : userNav
 
+  const [simDate, setSimDate] = useState(null)
+
+  const fetchDate = () => {
+    api.getConfig().then(c => {
+      if (c && c.current_simulation_date) {
+        setSimDate(new Date(c.current_simulation_date))
+      }
+    }).catch(console.error)
+  }
+
+  useEffect(() => {
+    fetchDate()
+    // Listen for resets or advances
+    const handleUpdate = () => fetchDate()
+    window.addEventListener('simulation-reset', handleUpdate)
+    // Poll every 5s just in case
+    const interval = setInterval(fetchDate, 5000)
+    return () => {
+      window.removeEventListener('simulation-reset', handleUpdate)
+      clearInterval(interval)
+    }
+  }, [])
+
   return (
     <div className="app-shell">
       <header className="top-bar">
         <div className="top-bar__logo">
           Market <span>for</span> Rooms
         </div>
+
+        {simDate && (
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#f0f0f0',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '4px',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'center'
+          }}>
+            <span style={{ color: '#666', fontSize: '0.8rem', textTransform: 'uppercase' }}>Current Time</span>
+            <span>
+              {simDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' '}
+              {simDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        )}
+
         <nav className="top-bar__nav">
           {nav.map((item) => (
             <NavLink
