@@ -255,6 +255,7 @@ export default function Marketplace() {
           selectedSlots={selectedSlots}
           onToggleSlot={handleToggleSlot}
           simDate={simDate}
+          currentAgentId={selectedAgent?.id}
         />
       )}
 

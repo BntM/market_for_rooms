@@ -43,3 +43,10 @@ class TimeSlot(Base):
     resource: Mapped["Resource"] = relationship(back_populates="time_slots")
     auctions: Mapped[list["Auction"]] = relationship(back_populates="time_slot")  # noqa: F821
     bookings: Mapped[list["Booking"]] = relationship(back_populates="time_slot")  # noqa: F821
+
+    @property
+    def booked_agent_ids(self) -> list[str]:
+        try:
+            return [b.agent_id for b in self.bookings]
+        except:
+            return []

@@ -481,6 +481,21 @@ export default function AdminDashboard() {
             ))}
           </select>
         </div>
+
+        <div className="form-group">
+          <label>Acting as</label>
+          <select
+            value={selectedAgent?.id || ''}
+            onChange={(e) => {
+              const a = agents.find(ag => ag.id === e.target.value)
+              if (a) setSelectedAgent(a)
+            }}
+          >
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>{a.name} ({a.token_balance.toFixed(1)} tokens)</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -497,6 +512,7 @@ export default function AdminDashboard() {
           selectedSlots={selectedSlots}
           onToggleSlot={handleToggleSlot}
           simDate={simDate}
+          currentAgentId={selectedAgent?.id}
         />
       )}
 

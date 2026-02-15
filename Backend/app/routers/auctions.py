@@ -74,7 +74,9 @@ async def list_auctions(
     end_date: datetime | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Auction).options(joinedload(Auction.time_slot)).join(TimeSlot)
+    query = select(Auction).options(
+        joinedload(Auction.time_slot).joinedload(TimeSlot.bookings)
+    ).join(TimeSlot)
     
     if status:
         query = query.where(Auction.status == status)
@@ -86,13 +88,16 @@ async def list_auctions(
         query = query.where(TimeSlot.end_time <= end_date)
         
     result = await db.execute(query)
-    # Unique to avoid duplicates if join behaves unexpectedly (though 1:1 here usually)
     return result.scalars().unique().all()
 
 
 @router.get("/{auction_id}", response_model=AuctionResponse)
 async def get_auction(auction_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Auction).where(Auction.id == auction_id))
+    result = await db.execute(
+        select(Auction).options(
+            joinedload(Auction.time_slot).joinedload(TimeSlot.bookings)
+        ).where(Auction.id == auction_id)
+    )
     auction = result.scalar_one_or_none()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
@@ -150,8 +155,15 @@ async def place_bid(
     await db.refresh(bid)
 
     # If bid was accepted, create booking
+    print(f"[DEBUG] Bid status: {bid.status}, BidStatus.ACCEPTED: {BidStatus.ACCEPTED}")
     if bid.status == BidStatus.ACCEPTED:
-        await create_booking_from_bid(auction, bid, db)
+        print(f"[DEBUG] Creating booking for bid {bid.id}")
+        try:
+            bookings = await create_booking_from_bid(auction, bid, db)
+            print(f"[DEBUG] Created {len(bookings)} bookings")
+        except Exception as e:
+            print(f"[DEBUG] Booking creation failed: {e}")
+            raise
         # Check if slot is now fully booked — resolve the auction
         slot_result = await db.execute(select(TimeSlot).where(TimeSlot.id == auction.time_slot_id))
         slot = slot_result.scalar_one_or_none()

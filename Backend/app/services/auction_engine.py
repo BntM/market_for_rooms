@@ -189,6 +189,17 @@ class DutchAuctionEngine(AuctionEngine):
             if agent.token_balance < bid_data.amount:
                 raise HTTPException(status_code=400, detail="Insufficient token balance")
 
+            # Check if agent already has a booking for this slot
+            from app.models import Booking
+            existing_booking = await db.execute(
+                select(Booking).where(
+                    Booking.time_slot_id == auction.time_slot_id,
+                    Booking.agent_id == bid_data.agent_id
+                )
+            )
+            if existing_booking.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="You already have a booking for this time slot")
+
             bid = Bid(
                 auction_id=auction.id,
                 agent_id=bid_data.agent_id,

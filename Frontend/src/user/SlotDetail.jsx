@@ -50,6 +50,11 @@ export default function SlotDetail({ slots, auctions, agent, onClose, onRemoveSl
                       <span style={{ color: 'var(--color-text-secondary)', marginLeft: '0.5rem' }}>({auction.status})</span>
                     </div>
                   )}
+                  {agent && slot.booked_agent_ids?.includes(agent.id) && (
+                    <div style={{ fontSize: '0.8rem', color: '#b8860b', fontWeight: 'bold', marginTop: '0.25rem' }}>
+                      ✓ You have a booking for this slot
+                    </div>
+                  )}
                   {!auction && (
                     <div className="text-secondary" style={{ fontSize: '0.75rem' }}>No auction</div>
                   )}

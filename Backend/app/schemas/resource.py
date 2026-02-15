@@ -38,6 +38,7 @@ class TimeSlotResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     status: str
+    booked_agent_ids: list[str] = []
 
     model_config = {"from_attributes": True}
 
