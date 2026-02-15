@@ -17,7 +17,9 @@ from app.models import (
     TimeSlotStatus,
     Transaction,
 )
+from app.models.limit_order import LimitOrder
 from app.schemas.agent import AgentResponse, BulkAgentCreate
+from app.services.auction_engine import get_auction_engine
 from app.services.preference_generator import generate_preferences_for_agent
 from app.services.simulation_service import get_simulation_results, run_simulation_round
 from app.services.token_service import allocate_tokens
@@ -73,22 +75,58 @@ async def get_results(db: AsyncSession = Depends(get_db)):
 
 @router.post("/reset")
 async def reset_simulation(db: AsyncSession = Depends(get_db)):
-    """Reset all simulation data (agents, auctions, bookings, etc.).
-    Preserves resources, time slots, and admin config."""
+    """Reset all simulation data (auctions, bookings, etc.).
+    Preserves resources, time slots, admin config, and agents (with reset balances)."""
+    # Get admin config for default balance
+    config_result = await db.execute(select(AdminConfig))
+    config = config_result.scalar_one_or_none()
+    default_balance = config.token_allocation_amount if config else 100.0
+
     # Delete in dependency order
     await db.execute(delete(GroupBidMember))
+    await db.execute(delete(LimitOrder))
     await db.execute(delete(Booking))
     await db.execute(delete(PriceHistory))
     await db.execute(delete(Transaction))
     await db.execute(delete(Bid))
     await db.execute(delete(Auction))
     await db.execute(delete(AgentPreference))
-    await db.execute(delete(Agent))
 
-    # Reset time slot statuses
+    # Reset agents instead of deleting them
+    agent_result = await db.execute(select(Agent))
+    agents = agent_result.scalars().all()
+    if agents:
+        for agent in agents:
+            agent.token_balance = default_balance
+    else:
+        # No agents exist — seed defaults
+        for i in range(1, 7):
+            db.add(Agent(name=f"User_{i}", token_balance=default_balance, max_bookings=10))
+
+    # Reset time slot statuses and recreate auctions
     result = await db.execute(select(TimeSlot))
-    for slot in result.scalars().all():
-        slot.status = TimeSlotStatus.AVAILABLE
+    slots = result.scalars().all()
+
+    start_price = config.dutch_start_price if config else 80.0
+    min_price = config.dutch_min_price if config else 5.0
+    price_step = config.dutch_price_step if config else 3.0
+    tick_interval = config.dutch_tick_interval_sec if config else 10.0
+
+    engine = get_auction_engine("dutch")
+    for slot in slots:
+        slot.status = TimeSlotStatus.IN_AUCTION
+        auction = Auction(
+            time_slot_id=slot.id,
+            auction_type="dutch",
+            start_price=start_price,
+            current_price=start_price,
+            min_price=min_price,
+            price_step=price_step,
+            tick_interval_sec=tick_interval,
+        )
+        db.add(auction)
+        await db.flush()
+        await engine.start(auction, db)
 
     await db.commit()
     return {"status": "reset_complete"}

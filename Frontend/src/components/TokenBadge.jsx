@@ -5,7 +5,7 @@ export default function TokenBadge() {
   const [agents, setAgents] = useState([])
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
+  const fetchAgents = () => {
     api.getAgents().then((data) => {
       setAgents(data)
       const stored = localStorage.getItem('agent_id')
@@ -16,8 +16,21 @@ export default function TokenBadge() {
       if (data.length > 0) {
         setSelected(data[0])
         localStorage.setItem('agent_id', data[0].id)
+      } else {
+        setSelected(null)
       }
-    }).catch(() => { })
+    }).catch(() => {})
+  }
+
+  useEffect(() => {
+    fetchAgents()
+    const handleRefresh = () => fetchAgents()
+    window.addEventListener('simulation-reset', handleRefresh)
+    window.addEventListener('agent-changed', handleRefresh)
+    return () => {
+      window.removeEventListener('simulation-reset', handleRefresh)
+      window.removeEventListener('agent-changed', handleRefresh)
+    }
   }, [])
 
   if (!selected) return null
@@ -33,8 +46,6 @@ export default function TokenBadge() {
           if (a) {
             setSelected(a)
             localStorage.setItem('agent_id', a.id)
-            // Force reload or event dispatch might be needed if other components don't listen to storage
-            // But for now, let's just save it.
             window.dispatchEvent(new Event('agent-changed'))
           }
         }}

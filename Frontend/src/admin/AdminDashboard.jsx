@@ -49,6 +49,7 @@ export default function AdminDashboard() {
     if (!confirm('Reset all simulation data? This cannot be undone.')) return
     try {
       await api.resetSimulation()
+      window.dispatchEvent(new Event('simulation-reset'))
       await load()
     } catch (e) {
       alert(e.message)

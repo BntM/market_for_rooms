@@ -152,6 +152,12 @@ async def place_bid(
     # If bid was accepted, create booking
     if bid.status == BidStatus.ACCEPTED:
         await create_booking_from_bid(auction, bid, db)
+        # Check if slot is now fully booked — resolve the auction
+        slot_result = await db.execute(select(TimeSlot).where(TimeSlot.id == auction.time_slot_id))
+        slot = slot_result.scalar_one_or_none()
+        if slot and slot.status == TimeSlotStatus.BOOKED:
+            auction.status = AuctionStatus.COMPLETED
+            auction.ended_at = datetime.utcnow()
         await db.commit()
 
     return bid

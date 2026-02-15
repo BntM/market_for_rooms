@@ -28,7 +28,12 @@ export default function RoomManager() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    const handleRefresh = () => load()
+    window.addEventListener('simulation-reset', handleRefresh)
+    return () => window.removeEventListener('simulation-reset', handleRefresh)
+  }, [])
 
   const handleAdd = async (e) => {
     e.preventDefault()

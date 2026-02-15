@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSelectSlot }) {
+export default function RoomTimeGrid({ resources, auctions, selectedSlots, onToggleSlot }) {
 
   // Process auctions into a resource-time map
   const { slotsByResource, sortedTimes } = useMemo(() => {
@@ -43,66 +43,73 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSele
   }
 
   return (
-    <div className="room-grid" style={{ gridTemplateColumns: `160px repeat(${sortedTimes.length}, minmax(80px, 1fr))` }}>
-      {/* Header row */}
-      <div className="room-grid__header" />
-      {sortedTimes.map((t) => (
-        <div key={t} className="room-grid__header">
-          <div>{formatDate(t)}</div>
-          <div>{formatTime(t)}</div>
-        </div>
-      ))}
+    <>
+      <div className="room-grid" style={{ gridTemplateColumns: `160px repeat(${sortedTimes.length}, minmax(80px, 1fr))` }}>
+        {/* Header row */}
+        <div className="room-grid__header" />
+        {sortedTimes.map((t) => (
+          <div key={t} className="room-grid__header">
+            <div>{formatDate(t)}</div>
+            <div>{formatTime(t)}</div>
+          </div>
+        ))}
 
-      {/* Data rows */}
-      {resources.map((r) => {
-        const rowData = slotsByResource[r.id] || {}
+        {/* Data rows */}
+        {resources.map((r) => {
+          const rowData = slotsByResource[r.id] || {}
 
-        return [
-          <div key={`label-${r.id}`} className="room-grid__row-label">
-            <div>
-              <div>{r.name}</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
-                {r.location}
+          return [
+            <div key={`label-${r.id}`} className="room-grid__row-label">
+              <div>
+                <div>{r.name}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+                  {r.location}
+                </div>
               </div>
-            </div>
-          </div>,
-          ...sortedTimes.map((t) => {
-            const cellData = rowData[t]
+            </div>,
+            ...sortedTimes.map((t) => {
+              const cellData = rowData[t]
 
-            if (!cellData) {
-              return <div key={`${r.id}-${t}`} className="room-grid__cell" style={{ background: '#f5f5f3' }}>
-                <span className="text-secondary" style={{ fontSize: '0.7rem' }}>—</span>
-              </div>
-            }
+              if (!cellData) {
+                return <div key={`${r.id}-${t}`} className="room-grid__cell" style={{ background: '#f5f5f3' }}>
+                  <span className="text-secondary" style={{ fontSize: '0.7rem' }}>—</span>
+                </div>
+              }
 
-            const { slot, auction } = cellData
-            const isSelected = selectedSlot?.id === slot.id
-            const isBooked = slot.status === 'booked'
-            const isActive = auction?.status === 'active'
+              const { slot, auction } = cellData
+              const isSelected = selectedSlots.some((s) => s.id === slot.id)
+              const isBooked = slot.status === 'booked'
+              const isActive = auction?.status === 'active'
 
-            return (
-              <div
-                key={`${r.id}-${t}`}
-                className={`room-grid__cell${isSelected ? ' selected' : ''}${isBooked ? ' booked' : ''}`}
-                onClick={() => onSelectSlot(slot)}
-              >
-                {isBooked ? (
-                  <span style={{ fontSize: '0.7rem' }}>Booked</span>
-                ) : (
-                  <>
-                    <span className={`cell-price ${isActive ? 'price--negative' : ''}`}>
-                      {auction.current_price.toFixed(1)}
+              return (
+                <div
+                  key={`${r.id}-${t}`}
+                  className={`room-grid__cell${isSelected ? ' selected' : ''}${isBooked ? ' booked' : ''}`}
+                  onClick={() => !isBooked && onToggleSlot(slot)}
+                  style={isBooked ? { cursor: 'default' } : undefined}
+                >
+                  {isBooked ? (
+                    <span style={{ fontSize: '0.7rem' }}>Booked</span>
+                  ) : auction ? (
+                    <>
+                      <span className={`cell-price ${isActive ? 'price--negative' : ''}`}>
+                        {auction.current_price.toFixed(1)}
+                      </span>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--color-text-secondary)' }}>
+                        {auction.status}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-secondary" style={{ fontSize: '0.7rem' }}>
+                      {slot.status}
                     </span>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--color-text-secondary)' }}>
-                      {auction.status}
-                    </span>
-                  </>
-                )}
-              </div>
-            )
-          }),
-        ]
-      })}
-    </div>
+                  )}
+                </div>
+              )
+            }),
+          ]
+        })}
+      </div>
+    </>
   )
 }

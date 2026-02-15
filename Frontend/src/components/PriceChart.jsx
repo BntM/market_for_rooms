@@ -11,11 +11,11 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
-export default function PriceChart({ data, height = 200, mini = false }) {
+export default function PriceChart({ data, labels, height = 200, mini = false }) {
   if (!data || data.length === 0) return <div className="text-secondary">No price data</div>
 
   const chartData = {
-    labels: data.map((_, i) => i + 1),
+    labels: labels || data.map((_, i) => i + 1),
     datasets: [
       {
         data: data.map((d) => (typeof d === 'number' ? d : d.price)),
@@ -49,6 +49,9 @@ export default function PriceChart({ data, height = 200, mini = false }) {
         ticks: {
           font: { family: "'JetBrains Mono', monospace", size: 10 },
           color: '#6b6b6b',
+          maxRotation: labels ? 45 : 0,
+          autoSkip: true,
+          maxTicksLimit: 12,
         },
       },
       y: {

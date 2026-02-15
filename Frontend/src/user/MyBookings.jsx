@@ -10,7 +10,10 @@ export default function MyBookings() {
   useEffect(() => {
     api.getAgents().then((data) => {
       setAgents(data)
-      if (data.length > 0) setSelectedAgent(data[0])
+      const stored = localStorage.getItem('agent_id')
+      const match = stored ? data.find((a) => a.id === stored) : null
+      if (match) setSelectedAgent(match)
+      else if (data.length > 0) setSelectedAgent(data[0])
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
@@ -19,6 +22,12 @@ export default function MyBookings() {
       api.getAgentBookings(selectedAgent.id).then(setBookings).catch(() => setBookings([]))
     }
   }, [selectedAgent?.id])
+
+  const formatDateTime = (isoStr) => {
+    if (!isoStr) return '—'
+    const d = new Date(isoStr)
+    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
 
   if (loading) return <div className="text-secondary">Loading...</div>
 
@@ -56,19 +65,21 @@ export default function MyBookings() {
             <table>
               <thead>
                 <tr>
-                  <th>Booking ID</th>
-                  <th>Time Slot</th>
-                  <th>Bid ID</th>
+                  <th>Room</th>
+                  <th>Location</th>
+                  <th>Time</th>
+                  <th>Price</th>
                   <th>Booked At</th>
                 </tr>
               </thead>
               <tbody>
                 {bookings.map((b) => (
                   <tr key={b.id}>
-                    <td className="mono" style={{ fontSize: '0.75rem' }}>{b.id.slice(0, 8)}...</td>
-                    <td className="mono" style={{ fontSize: '0.75rem' }}>{b.time_slot_id.slice(0, 8)}...</td>
-                    <td className="mono" style={{ fontSize: '0.75rem' }}>{b.bid_id.slice(0, 8)}...</td>
-                    <td>{new Date(b.created_at).toLocaleString()}</td>
+                    <td>{b.room_name || '—'}</td>
+                    <td>{b.location || '—'}</td>
+                    <td>{formatDateTime(b.start_time)}{b.end_time ? ` — ${formatDateTime(b.end_time)}` : ''}</td>
+                    <td className="mono price">{b.price != null ? `${b.price.toFixed(1)} tokens` : '—'}</td>
+                    <td>{formatDateTime(b.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

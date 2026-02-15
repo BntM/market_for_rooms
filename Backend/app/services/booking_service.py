@@ -96,8 +96,8 @@ async def create_booking_from_bid(
         db.add(booking)
         bookings.append(booking)
 
-    # Update slot status if at capacity
-    if existing_count + len(bookings) >= resource.capacity:
+    # Mark slot as booked after any successful booking
+    if bookings:
         slot.status = TimeSlotStatus.BOOKED
 
     return bookings

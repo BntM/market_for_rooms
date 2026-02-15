@@ -75,6 +75,22 @@ class BookingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BookingDetailResponse(BaseModel):
+    id: str
+    time_slot_id: str
+    agent_id: str
+    bid_id: str
+    created_at: datetime
+    # Enriched fields
+    room_name: str | None = None
+    location: str | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    price: float | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class LimitOrderCreate(BaseModel):
     agent_id: str
     max_price: float
@@ -89,5 +105,23 @@ class LimitOrderResponse(BaseModel):
     created_at: datetime
     executed_at: datetime | None = None
     bid_id: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class LimitOrderDetailResponse(BaseModel):
+    id: str
+    agent_id: str
+    time_slot_id: str
+    max_price: float
+    status: str
+    created_at: datetime
+    executed_at: datetime | None = None
+    bid_id: str | None = None
+    # Enriched fields
+    room_name: str | None = None
+    location: str | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
 
     model_config = {"from_attributes": True}

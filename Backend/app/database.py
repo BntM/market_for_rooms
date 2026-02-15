@@ -44,3 +44,20 @@ async def get_db() -> AsyncSession:
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Seed default agents if none exist
+    await seed_default_agents()
+
+
+async def seed_default_agents():
+    from sqlalchemy import select, func
+    from app.models import Agent, AdminConfig
+
+    async with async_session() as db:
+        count = await db.scalar(select(func.count()).select_from(Agent))
+        if count and count > 0:
+            return
+        config = await db.scalar(select(AdminConfig))
+        balance = config.token_allocation_amount if config else 100.0
+        for i in range(1, 7):
+            db.add(Agent(name=f"User_{i}", token_balance=balance, max_bookings=10))
+        await db.commit()

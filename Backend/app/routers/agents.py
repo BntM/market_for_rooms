@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Agent, AgentPreference, Booking, LimitOrder, Transaction
+from app.models.resource import Resource, TimeSlot
 from app.schemas.agent import (
     AgentCreate,
     AgentPreferenceCreate,
@@ -13,7 +14,7 @@ from app.schemas.agent import (
     BulkAgentCreate,
     TransactionResponse,
 )
-from app.schemas.auction import BookingResponse, LimitOrderResponse
+from app.schemas.auction import BookingDetailResponse, LimitOrderDetailResponse
 from app.services.preference_generator import generate_preferences_for_agent
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
@@ -111,10 +112,35 @@ async def set_preferences(
     return new_prefs
 
 
-@router.get("/{agent_id}/bookings", response_model=list[BookingResponse])
+@router.get("/{agent_id}/bookings", response_model=list[BookingDetailResponse])
 async def get_agent_bookings(agent_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Booking).where(Booking.agent_id == agent_id))
-    return result.scalars().all()
+    result = await db.execute(
+        select(Booking)
+        .where(Booking.agent_id == agent_id)
+        .options(
+            selectinload(Booking.time_slot).selectinload(TimeSlot.resource),
+            selectinload(Booking.bid),
+        )
+        .order_by(Booking.created_at.desc())
+    )
+    bookings = result.scalars().all()
+    enriched = []
+    for b in bookings:
+        slot = b.time_slot
+        resource = slot.resource if slot else None
+        enriched.append(BookingDetailResponse(
+            id=b.id,
+            time_slot_id=b.time_slot_id,
+            agent_id=b.agent_id,
+            bid_id=b.bid_id,
+            created_at=b.created_at,
+            room_name=resource.name if resource else None,
+            location=resource.location if resource else None,
+            start_time=slot.start_time if slot else None,
+            end_time=slot.end_time if slot else None,
+            price=b.bid.amount if b.bid else None,
+        ))
+    return enriched
 
 
 @router.get("/{agent_id}/transactions", response_model=list[TransactionResponse])
@@ -127,11 +153,33 @@ async def get_agent_transactions(agent_id: str, db: AsyncSession = Depends(get_d
     return result.scalars().all()
 
 
-@router.get("/{agent_id}/limit-orders", response_model=list[LimitOrderResponse])
+@router.get("/{agent_id}/limit-orders", response_model=list[LimitOrderDetailResponse])
 async def get_agent_limit_orders(agent_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(LimitOrder)
         .where(LimitOrder.agent_id == agent_id)
+        .options(
+            selectinload(LimitOrder.time_slot).selectinload(TimeSlot.resource),
+        )
         .order_by(LimitOrder.created_at.desc())
     )
-    return result.scalars().all()
+    orders = result.scalars().all()
+    enriched = []
+    for o in orders:
+        slot = o.time_slot
+        resource = slot.resource if slot else None
+        enriched.append(LimitOrderDetailResponse(
+            id=o.id,
+            agent_id=o.agent_id,
+            time_slot_id=o.time_slot_id,
+            max_price=o.max_price,
+            status=o.status.value if hasattr(o.status, 'value') else o.status,
+            created_at=o.created_at,
+            executed_at=o.executed_at,
+            bid_id=o.bid_id,
+            room_name=resource.name if resource else None,
+            location=resource.location if resource else None,
+            start_time=slot.start_time if slot else None,
+            end_time=slot.end_time if slot else None,
+        ))
+    return enriched

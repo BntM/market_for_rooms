@@ -10,7 +10,10 @@ export default function MyOrders() {
   useEffect(() => {
     api.getAgents().then((data) => {
       setAgents(data)
-      if (data.length > 0) setSelectedAgent(data[0])
+      const stored = localStorage.getItem('agent_id')
+      const match = stored ? data.find((a) => a.id === stored) : null
+      if (match) setSelectedAgent(match)
+      else if (data.length > 0) setSelectedAgent(data[0])
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
@@ -27,6 +30,12 @@ export default function MyOrders() {
     } catch (e) {
       alert(e.message)
     }
+  }
+
+  const formatDateTime = (isoStr) => {
+    if (!isoStr) return '—'
+    const d = new Date(isoStr)
+    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
   if (loading) return <div className="text-secondary">Loading...</div>
@@ -65,8 +74,9 @@ export default function MyOrders() {
             <table>
               <thead>
                 <tr>
-                  <th>Order ID</th>
-                  <th>Time Slot</th>
+                  <th>Room</th>
+                  <th>Location</th>
+                  <th>Time</th>
                   <th>Max Price</th>
                   <th>Status</th>
                   <th>Created</th>
@@ -76,11 +86,12 @@ export default function MyOrders() {
               <tbody>
                 {orders.map((o) => (
                   <tr key={o.id}>
-                    <td className="mono" style={{ fontSize: '0.75rem' }}>{o.id.slice(0, 8)}...</td>
-                    <td className="mono" style={{ fontSize: '0.75rem' }}>{o.time_slot_id.slice(0, 8)}...</td>
-                    <td className="mono price">{o.max_price.toFixed(1)}</td>
+                    <td>{o.room_name || '—'}</td>
+                    <td>{o.location || '—'}</td>
+                    <td>{formatDateTime(o.start_time)}{o.end_time ? ` — ${formatDateTime(o.end_time)}` : ''}</td>
+                    <td className="mono price">{o.max_price.toFixed(1)} tokens</td>
                     <td><span className={`status status--${o.status}`}>{o.status}</span></td>
-                    <td>{new Date(o.created_at).toLocaleString()}</td>
+                    <td>{formatDateTime(o.created_at)}</td>
                     <td>
                       {o.status === 'pending' && (
                         <button className="btn btn--danger btn--small" onClick={() => handleCancel(o.id)}>

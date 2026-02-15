@@ -8,8 +8,9 @@ export default function Marketplace() {
   const [auctions, setAuctions] = useState([])
   const [agents, setAgents] = useState([])
   const [selectedAgent, setSelectedAgent] = useState(null)
-  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [selectedSlots, setSelectedSlots] = useState([])
   const [location, setLocation] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [viewDate, setViewDate] = useState(new Date()) // Default to today
 
@@ -30,7 +31,15 @@ export default function Marketplace() {
       setResources(res)
       setAuctions(auc)
       setAgents(ag)
-      if (ag.length > 0 && !selectedAgent) setSelectedAgent(ag[0])
+
+      // Sync selectedAgent with fresh data
+      if (ag.length > 0) {
+        const currentId = selectedAgent?.id || localStorage.getItem('agent_id')
+        const match = currentId ? ag.find((a) => a.id === currentId) : null
+        setSelectedAgent(match || ag[0])
+      } else {
+        setSelectedAgent(null)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -40,6 +49,13 @@ export default function Marketplace() {
 
   // Reload when date changes
   useEffect(() => { load() }, [viewDate])
+
+  // Listen for simulation reset
+  useEffect(() => {
+    const handleReset = () => { load(); setRefreshKey((k) => k + 1); setSelectedSlots([]) }
+    window.addEventListener('simulation-reset', handleReset)
+    return () => window.removeEventListener('simulation-reset', handleReset)
+  }, [])
 
   useEffect(() => {
     const handleAgentChange = () => {
@@ -64,18 +80,46 @@ export default function Marketplace() {
     ? resources.filter((r) => r.location === location)
     : resources
 
-  const handleBuyNow = async (auction) => {
+  const handleToggleSlot = (slot) => {
+    setSelectedSlots((prev) => {
+      const exists = prev.find((s) => s.id === slot.id)
+      if (exists) return prev.filter((s) => s.id !== slot.id)
+      return [...prev, slot]
+    })
+  }
+
+  const handleBuyAll = async (slotsToBuy) => {
     if (!selectedAgent) return
-    try {
-      await api.placeBid(auction.id, {
-        agent_id: selectedAgent.id,
-        amount: auction.current_price,
-      })
-      await load()
-      setSelectedSlot(null)
-    } catch (e) {
-      alert(e.message)
+    const items = slotsToBuy.map((slot) => {
+      const auction = auctions.find((a) => a.time_slot_id === slot.id)
+      return { slot, auction }
+    }).filter((item) => item.auction && item.auction.status === 'active')
+
+    if (items.length === 0) {
+      alert('No active auctions for selected slots.')
+      return
     }
+
+    const total = items.reduce((sum, item) => sum + item.auction.current_price, 0)
+    const confirmed = confirm(
+      `Buy ${items.length} slot(s) for ${total.toFixed(1)} total tokens?\n\n` +
+      items.map((item) => `  • ${item.auction.current_price.toFixed(1)} tokens`).join('\n')
+    )
+    if (!confirmed) return
+
+    for (const item of items) {
+      try {
+        await api.placeBid(item.auction.id, {
+          agent_id: selectedAgent.id,
+          amount: item.auction.current_price,
+        })
+      } catch (e) {
+        alert(`Failed to buy slot: ${e.message}`)
+      }
+    }
+    await load()
+    setRefreshKey((k) => k + 1)
+    setSelectedSlots([])
   }
 
   const handleSetOrder = async (auction, maxPrice) => {
@@ -86,6 +130,7 @@ export default function Marketplace() {
         max_price: maxPrice,
       })
       alert('Limit order placed')
+      setRefreshKey((k) => k + 1)
     } catch (e) {
       alert(e.message)
     }
@@ -136,7 +181,7 @@ export default function Marketplace() {
 
         {/* Sync with Global Agent Selector */}
         <div className="form-group">
-          <label>Acting as (Global)</label>
+          <label>Acting as</label>
           <select
             value={selectedAgent?.id || ''}
             onChange={(e) => {
@@ -148,6 +193,7 @@ export default function Marketplace() {
               }
             }}
           >
+            {agents.length === 0 && <option value="">No agents available</option>}
             {agents.map((a) => (
               <option key={a.id} value={a.id}>{a.name} ({a.token_balance.toFixed(1)} tokens)</option>
             ))}
@@ -163,19 +209,21 @@ export default function Marketplace() {
         </div>
       ) : (
         <RoomTimeGrid
+          key={refreshKey}
           resources={filtered}
           auctions={auctions}
-          selectedSlot={selectedSlot}
-          onSelectSlot={setSelectedSlot}
+          selectedSlots={selectedSlots}
+          onToggleSlot={handleToggleSlot}
         />
       )}
 
       <SlotDetail
-        slot={selectedSlot}
+        slots={selectedSlots}
         auctions={auctions}
         agent={selectedAgent}
-        onClose={() => setSelectedSlot(null)}
-        onBuyNow={handleBuyNow}
+        onClose={() => setSelectedSlots([])}
+        onRemoveSlot={(slot) => setSelectedSlots((prev) => prev.filter((s) => s.id !== slot.id))}
+        onBuyAll={handleBuyAll}
         onSetOrder={handleSetOrder}
       />
     </div>
