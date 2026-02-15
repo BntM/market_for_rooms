@@ -5,13 +5,10 @@ import MyBookings from './user/MyBookings'
 import MyOrders from './user/MyOrders'
 import AdminDashboard from './admin/AdminDashboard'
 import RoomManager from './admin/RoomManager'
-import AuctionConfig from './admin/AuctionConfig'
 import PriceMonitor from './admin/PriceMonitor'
 import HistoricalAnalysis from './admin/HistoricalAnalysis'
 import MarketSimulator from './admin/MarketSimulator'
 import Initialization from './admin/Initialization'
-
-import AdminSchedule from './admin/AdminSchedule'
 
 // Main App Component with Routing
 export default function App() {
@@ -23,11 +20,8 @@ export default function App() {
         <Route path="/user/bookings" element={<MyBookings />} />
         <Route path="/user/orders" element={<MyOrders />} />
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/schedule" element={<AdminSchedule />} />
         <Route path="/admin/rooms" element={<RoomManager />} />
-        <Route path="/admin/config" element={<AuctionConfig />} />
         <Route path="/admin/prices" element={<PriceMonitor />} />
-        <Route path="/admin/analysis" element={<HistoricalAnalysis />} />
         <Route path="/admin/analysis" element={<HistoricalAnalysis />} />
         <Route path="/admin/simulator" element={<MarketSimulator />} />
         <Route path="/admin/init" element={<Initialization />} />

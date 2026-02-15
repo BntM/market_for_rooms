@@ -240,11 +240,12 @@ export default function AdminDashboard() {
       )}
 
       <SlotDetail
-        slot={selectedSlot} // SlotDetail expects 'slot' for singular view, or 'slots' for bulk. Admin view is usually singular inspection.
+        slots={selectedSlot ? [selectedSlot] : []}
         auctions={auctions}
         agent={null}
         onClose={() => setSelectedSlot(null)}
-        onBuyNow={() => { }}
+        onRemoveSlot={() => setSelectedSlot(null)}
+        onBuyAll={() => { }}
         onSetOrder={() => { }}
       />
     </div>
