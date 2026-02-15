@@ -151,17 +151,17 @@ export default function Marketplace() {
               className="btn btn--small"
               onClick={() => handleDateChange(-1)}
             >&lt;</button>
-            <div style={{
-              background: 'white',
-              padding: '0.5rem 1rem',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontWeight: 500,
-              minWidth: '140px',
-              textAlign: 'center'
-            }}>
-              {viewDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-            </div>
+            <input
+              type="date"
+              style={{ padding: '0.4rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              value={viewDate.toISOString().split('T')[0]}
+              onChange={(e) => {
+                const date = new Date(e.target.value)
+                const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+                const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+                setViewDate(adjustedDate)
+              }}
+            />
             <button
               className="btn btn--small"
               onClick={() => handleDateChange(1)}

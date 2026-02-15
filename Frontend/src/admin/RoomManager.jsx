@@ -196,8 +196,7 @@ export default function RoomManager() {
                     <td className="mono">{r.capacity}</td>
                     <td className="mono">{rs.length}</td>
                     <td style={{ fontSize: '0.8rem' }}>
-                      <span className="status status--active">{available} avail</span>{' '}
-                      <span className="status status--pending">{inAuction} auction</span>{' '}
+                      <span className="status status--active">{available + inAuction} avail</span>{' '}
                       <span className="status status--completed">{booked} booked</span>
                     </td>
                     <td>
