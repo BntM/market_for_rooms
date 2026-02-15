@@ -7,6 +7,12 @@ class AgentCreate(BaseModel):
     name: str
     token_balance: float = 0.0
     max_bookings: int = 10
+    is_simulated: bool = False
+    behavior_risk_tolerance: float = 0.5
+    behavior_price_sensitivity: float = 0.5
+    behavior_flexibility: float = 0.5
+    behavior_preferred_days: str = "0,1,2,3,4"
+    behavior_preferred_period: str = "any"
 
 
 class AgentResponse(BaseModel):
@@ -16,6 +22,12 @@ class AgentResponse(BaseModel):
     is_active: bool
     max_bookings: int
     created_at: datetime
+    is_simulated: bool = False
+    behavior_risk_tolerance: float = 0.5
+    behavior_price_sensitivity: float = 0.5
+    behavior_flexibility: float = 0.5
+    behavior_preferred_days: str = "0,1,2,3,4"
+    behavior_preferred_period: str = "any"
 
     model_config = {"from_attributes": True}
 

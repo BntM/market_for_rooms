@@ -40,6 +40,7 @@ const api = {
   getAgentBookings: (id) => request(`/agents/${id}/bookings`),
   getAgentTransactions: (id) => request(`/agents/${id}/transactions`),
   getAgentLimitOrders: (id) => request(`/agents/${id}/limit-orders`),
+  updateAgent: (id, data) => request(`/agents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Auctions
   getAuctions: (params = {}) => {

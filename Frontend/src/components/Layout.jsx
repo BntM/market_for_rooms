@@ -35,7 +35,13 @@ export default function Layout() {
   useEffect(() => {
     fetchDate()
     // Listen for resets or advances
-    const handleUpdate = () => fetchDate()
+    const handleUpdate = (e) => {
+      if (e.detail && e.detail.date) {
+        setSimDate(new Date(e.detail.date))
+      } else {
+        fetchDate()
+      }
+    }
     window.addEventListener('simulation-reset', handleUpdate)
     // Poll every 5s just in case
     const interval = setInterval(fetchDate, 5000)

@@ -16,6 +16,14 @@ class Agent(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     max_bookings: Mapped[int] = mapped_column(Integer, default=10)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    
+    # Simulation Fields
+    is_simulated: Mapped[bool] = mapped_column(Boolean, default=False)
+    behavior_risk_tolerance: Mapped[float] = mapped_column(Float, default=0.5) # 0=RiskAdverse, 1=RiskTaker
+    behavior_price_sensitivity: Mapped[float] = mapped_column(Float, default=0.5) # 0=Rich, 1=Cheap
+    behavior_flexibility: Mapped[float] = mapped_column(Float, default=0.5) # 0=Rigid, 1=Flexible
+    behavior_preferred_days: Mapped[str] = mapped_column(String, default="0,1,2,3,4") # CSV days
+    behavior_preferred_period: Mapped[str] = mapped_column(String, default="any") # morning, afternoon, evening, any
 
     preferences: Mapped[list["AgentPreference"]] = relationship(
         back_populates="agent", cascade="all, delete-orphan"

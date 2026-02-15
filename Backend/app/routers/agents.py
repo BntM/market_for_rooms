@@ -73,6 +73,21 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
     return agent
 
 
+@router.put("/{agent_id}", response_model=AgentResponse)
+async def update_agent(agent_id: str, data: AgentCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    for key, value in data.model_dump().items():
+        setattr(agent, key, value)
+    
+    await db.commit()
+    await db.refresh(agent)
+    return agent
+
+
 @router.get("/{agent_id}/preferences", response_model=list[AgentPreferenceResponse])
 async def get_preferences(agent_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(

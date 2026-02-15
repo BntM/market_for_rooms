@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import api from '../api'
 import RoomTimeGrid from '../user/RoomTimeGrid'
 import SlotDetail from '../user/SlotDetail'
+import { NavLink } from 'react-router-dom'
 
 // Reusing the config component logic here
 const ConfigSection = () => {
@@ -20,19 +21,11 @@ const ConfigSection = () => {
             token_frequency_days: 7,
             token_inflation_rate: 0,
             max_bookings_per_agent: 10,
-            // Defaults
             dutch_start_price: 100,
             dutch_min_price: 10,
             dutch_price_step: 5,
             dutch_tick_interval_sec: 10,
-            location_popularity: {},
-            time_popularity: {},
             global_price_modifier: 1.0,
-            lead_time_sensitivity: 1.0,
-            capacity_weight: 1.0,
-            location_weight: 1.0,
-            time_of_day_weight: 1.0,
-            day_of_week_weight: 1.0,
           })
         })
         .finally(() => setLoading(false))
@@ -54,11 +47,11 @@ const ConfigSection = () => {
 
   const field = (label, key, type = 'number', step = undefined) => (
     <div style={{ marginBottom: '1rem' }}>
-      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>{label}</label>
+      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.8rem' }}>{label}</label>
       <input
         type={type}
         step={step}
-        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+        style={{ width: '100%', padding: '0.4rem', border: '1px solid #ddd', borderRadius: '4px' }}
         value={config?.[key] ?? ''}
         onChange={(e) => setConfig({ ...config, [key]: type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value })}
       />
@@ -68,41 +61,149 @@ const ConfigSection = () => {
   return (
     <div className="card mb-2">
       <div className="flex-between" style={{ cursor: 'pointer' }} onClick={() => setShow(!show)}>
-        <h3 style={{ margin: 0 }}>Settings & Configuration</h3>
+        <h3 style={{ margin: 0 }}>⚙️ System Configuration</h3>
+        <button className="btn btn--small">{show ? 'Hide' : 'Show'}</button>
+      </div>
+      {show && (
+        <div style={{ marginTop: '1.5rem' }}>
+          {loading ? <div>Loading...</div> : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+              <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '1rem', marginTop: 0 }}>Token Economics</h4>
+                {field('Starting Balance', 'token_starting_amount', 'number')}
+                {field('Distribution (Days)', 'token_frequency_days', 'number', '0.1')}
+                {field('Inflation Rate', 'token_inflation_rate', 'number', '0.01')}
+                {field('Max Bookings', 'max_bookings_per_agent', 'number')}
+              </div>
+              <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '1rem', marginTop: 0 }}>Pricing Settings</h4>
+                {field('Start Price', 'dutch_start_price', 'number')}
+                {field('Min Price', 'dutch_min_price', 'number')}
+                {field('Price Step', 'dutch_price_step', 'number')}
+                {field('Global Modifier', 'global_price_modifier', 'number', '0.1')}
+              </div>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
+                <button className="btn btn--primary" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Configuration'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const SimulationSection = () => {
+  const [agents, setAgents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [show, setShow] = useState(false)
+  const [simulating, setSimulating] = useState(false)
+  const [weeks, setWeeks] = useState(1)
+
+  const fetchAgents = async () => {
+    try {
+      const res = await api.getAgents()
+      setAgents(res.filter(a => a.is_simulated))
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { if (show) fetchAgents() }, [show])
+
+  const handleCreateAgent = async () => {
+    try {
+      await api.createAgent({
+        name: `SimAgent_${agents.length + 1}`,
+        is_simulated: true,
+        token_balance: 100,
+        behavior_risk_tolerance: 0.5,
+        behavior_price_sensitivity: 0.5,
+        behavior_flexibility: 0.5,
+        behavior_preferred_days: "0,1,2,3,4",
+        behavior_preferred_period: "any"
+      })
+      fetchAgents()
+    } catch (e) { alert(e.message) }
+  }
+
+  const handleSimulate = async () => {
+    setSimulating(true)
+    try {
+      const res = await api.request('/simulation/simulate-semester?weeks=' + weeks, { method: 'POST' })
+      alert(`Simulation complete! Made ${res.bookings_made} bookings over ${res.days_simulated} days.`)
+      window.dispatchEvent(new CustomEvent('simulation-reset', { detail: { date: res.current_date } }))
+    } catch (e) { alert(e.message) }
+    finally { setSimulating(false) }
+  }
+
+  const updateAgentBehavior = async (agent, updates) => {
+    try {
+      await api.updateAgent(agent.id, { ...agent, ...updates })
+      fetchAgents()
+    } catch (e) { alert(e.message) }
+  }
+
+  return (
+    <div className="card mb-2">
+      <div className="flex-between" style={{ cursor: 'pointer' }} onClick={() => setShow(!show)}>
+        <h3 style={{ margin: 0 }}>👩‍💻 Simulation Management</h3>
         <button className="btn btn--small">{show ? 'Hide' : 'Show'}</button>
       </div>
 
       {show && (
         <div style={{ marginTop: '1.5rem' }}>
-          {loading ? <div>Loading...</div> : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-              <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px' }}>
-                <h4 style={{ marginBottom: '1rem' }}>Token Economics</h4>
-                {field('Starting Token Amount', 'token_starting_amount', 'number')}
-                {field('Distribution Frequency (Days)', 'token_frequency_days', 'number', '0.1')}
-                {field('Inflation Rate (0.05 = 5%)', 'token_inflation_rate', 'number', '0.01')}
-                {field('Max Bookings per Agent', 'max_bookings_per_agent', 'number')}
-              </div>
-              <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px' }}>
-                <h4 style={{ marginBottom: '1rem' }}>Pricing Sensitivities</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    {field('Global Modifier', 'global_price_modifier', 'number', '0.1')}
-                    {field('Lead Time', 'lead_time_sensitivity', 'number', '0.1')}
-                    {field('Capacity Weight', 'capacity_weight', 'number', '0.1')}
-                  </div>
-                  <div>
-                    {field('Location Weight', 'location_weight', 'number', '0.1')}
-                    {field('Time Weight', 'time_of_day_weight', 'number', '0.1')}
-                    {field('Day Weight', 'day_of_week_weight', 'number', '0.1')}
+          <div style={{ background: '#eef2ff', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.8rem' }}>Simulation Duration</label>
+              <select value={weeks} onChange={e => setWeeks(parseInt(e.target.value))} style={{ padding: '0.4rem', borderRadius: '4px', width: '100%', border: '1px solid #ddd' }}>
+                <option value={1}>1 Week</option>
+                <option value={4}>1 Month (4 Weeks)</option>
+                <option value={15}>Full Semester (15 Weeks)</option>
+              </select>
+            </div>
+            <button className="btn btn--primary" onClick={handleSimulate} disabled={simulating}>
+              {simulating ? 'Simulating...' : `Run Simulation`}
+            </button>
+          </div>
+
+          <div className="flex-between" style={{ marginBottom: '1rem' }}>
+            <h4 style={{ margin: 0 }}>Simulated Agents ({agents.length})</h4>
+            <button className="btn btn--small" onClick={handleCreateAgent}>+ Create Agent</button>
+          </div>
+
+          {loading ? <div>Loading agents...</div> : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+              {agents.map(agent => (
+                <div key={agent.id} style={{ background: '#fff', border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', borderBottom: '1px solid #eee', paddingBottom: '0.4rem' }}>{agent.name}</div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: '#666' }}>Risk Tolerance</label>
+                      <input type="number" step="0.1" value={agent.behavior_risk_tolerance} style={{ width: '100%' }}
+                        onChange={(e) => updateAgentBehavior(agent, { behavior_risk_tolerance: parseFloat(e.target.value) })} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: '#666' }}>Price Sensitivity</label>
+                      <input type="number" step="0.1" value={agent.behavior_price_sensitivity} style={{ width: '100%' }}
+                        onChange={(e) => updateAgentBehavior(agent, { behavior_price_sensitivity: parseFloat(e.target.value) })} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: '#666' }}>Flexibility</label>
+                      <input type="number" step="0.1" value={agent.behavior_flexibility} style={{ width: '100%' }}
+                        onChange={(e) => updateAgentBehavior(agent, { behavior_flexibility: parseFloat(e.target.value) })} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: '#666' }}>Preferred Days (0-4)</label>
+                      <input type="text" value={agent.behavior_preferred_days} style={{ width: '100%' }}
+                        onChange={(e) => updateAgentBehavior(agent, { behavior_preferred_days: e.target.value })} />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
-                <button className="btn btn--primary" onClick={(e) => { e.stopPropagation(); handleSave() }} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Configuration'}
-                </button>
-              </div>
+              ))}
+              {agents.length === 0 && <div className="text-secondary">No simulated agents. Create some to run a semester simulation.</div>}
             </div>
           )}
         </div>
@@ -187,6 +288,7 @@ export default function AdminDashboard() {
       </div>
 
       <ConfigSection />
+      <SimulationSection />
 
       <div className="card mb-2">
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -196,8 +298,10 @@ export default function AdminDashboard() {
               const res = await api.advanceDay();
               if (res && res.current_date) {
                 setViewDate(new Date(res.current_date));
+                window.dispatchEvent(new CustomEvent('simulation-reset', { detail: { date: res.current_date } }));
+              } else {
+                window.dispatchEvent(new Event('simulation-reset'));
               }
-              window.dispatchEvent(new Event('simulation-reset'));
               await load();
             } catch (e) { alert(e.message) } finally { setLoading(false) }
           }}>
@@ -210,9 +314,10 @@ export default function AdminDashboard() {
               const res = await api.advanceHour();
               if (res && res.current_date) {
                 setViewDate(new Date(res.current_date));
+                window.dispatchEvent(new CustomEvent('simulation-reset', { detail: { date: res.current_date } }));
+              } else {
+                window.dispatchEvent(new Event('simulation-reset'));
               }
-              // Also trigger a global event so the top bar updates immediately
-              window.dispatchEvent(new Event('simulation-reset'));
               await load();
             } catch (e) { alert(e.message) } finally { setLoading(false) }
           }}>

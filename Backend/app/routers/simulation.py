@@ -24,10 +24,20 @@ from app.schemas.agent import AgentResponse, BulkAgentCreate
 from app.services.auction_engine import get_auction_engine
 from app.services.preference_generator import generate_preferences_for_agent
 from app.services.pricing_service import recalculate_prices
-from app.services.simulation_service import get_simulation_results, run_simulation_round
+from app.services.simulation_service import (
+    get_simulation_results,
+    run_simulation_round,
+    simulate_semester,
+)
 from app.services.token_service import allocate_tokens
 
 router = APIRouter(prefix="/api/simulation", tags=["simulation"])
+
+
+@router.post("/simulate-semester")
+async def trigger_simulate_semester(weeks: int = 1, db: AsyncSession = Depends(get_db)):
+    """Run a semester simulation (behavior-based)."""
+    return await simulate_semester(db, weeks=weeks)
 
 
 @router.post("/agents/generate", response_model=list[AgentResponse], status_code=201)
