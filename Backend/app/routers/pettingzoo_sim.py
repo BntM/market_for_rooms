@@ -33,7 +33,7 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 try:
-    from simulation.config import GridSearchConfig, SimulationConfig
+    from simulation.config import AgentProfile, GridSearchConfig, SimulationConfig
     from simulation.runner import run_grid_search, run_single_simulation
     logger.info("simulation package imported from %s", _project_root)
 except ImportError as e:
@@ -47,7 +47,20 @@ _jobs: Dict[str, PZJobStatus] = {}
 
 
 def _sim_config_from_request(req: PZSimConfig) -> SimulationConfig:
-    return SimulationConfig(
+    profiles = None
+    if req.agent_profiles:
+        profiles = [
+            AgentProfile(
+                name=p.name,
+                share=p.share,
+                urgency_range=tuple(p.urgency_range),
+                budget_sensitivity_range=tuple(p.budget_sensitivity_range),
+                base_value_range=tuple(p.base_value_range),
+            )
+            for p in req.agent_profiles
+        ]
+
+    kwargs = dict(
         num_agents=req.num_agents,
         num_rooms=req.num_rooms,
         slots_per_room_per_day=req.slots_per_room_per_day,
@@ -60,6 +73,10 @@ def _sim_config_from_request(req: PZSimConfig) -> SimulationConfig:
         max_ticks=req.max_ticks,
         high_demand_days=[(d[0], d[1]) for d in req.high_demand_days if len(d) == 2],
     )
+    if profiles:
+        kwargs["agent_profiles"] = profiles
+
+    return SimulationConfig(**kwargs)
 
 
 @router.post("/single", response_model=PZSingleResponse)

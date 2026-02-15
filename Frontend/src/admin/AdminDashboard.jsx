@@ -61,7 +61,7 @@ const ConfigSection = () => {
   return (
     <div className="card mb-2">
       <div className="flex-between" style={{ cursor: 'pointer' }} onClick={() => setShow(!show)}>
-        <h3 style={{ margin: 0 }}>⚙️ System Configuration</h3>
+        <h3 style={{ margin: 0 }}>System Configuration</h3>
         <button className="btn btn--small">{show ? 'Hide' : 'Show'}</button>
       </div>
       {show && (
@@ -148,7 +148,7 @@ const SimulationSection = () => {
   return (
     <div className="card mb-2">
       <div className="flex-between" style={{ cursor: 'pointer' }} onClick={() => setShow(!show)}>
-        <h3 style={{ margin: 0 }}>👩‍💻 Simulation Management</h3>
+        <h3 style={{ margin: 0 }}>Simulation Management</h3>
         <button className="btn btn--small">{show ? 'Hide' : 'Show'}</button>
       </div>
 
@@ -218,8 +218,26 @@ export default function AdminDashboard() {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [location, setLocation] = useState('')
   const [loading, setLoading] = useState(true)
-  const [viewDate, setViewDate] = useState(new Date())
+  const [viewDate, setViewDate] = useState(null)
+  const [simDate, setSimDate] = useState(null)
   const [error, setError] = useState(null)
+
+  // Initialize viewDate from simulation time
+  useEffect(() => {
+    api.getConfig().then(c => {
+      if (c?.current_simulation_date) {
+        const d = new Date(c.current_simulation_date)
+        setViewDate(d)
+        setSimDate(d)
+      } else {
+        setViewDate(new Date())
+        setSimDate(new Date())
+      }
+    }).catch(() => {
+      setViewDate(new Date())
+      setSimDate(new Date())
+    })
+  }, [])
 
   const load = async () => {
     setLoading(true)
@@ -244,11 +262,18 @@ export default function AdminDashboard() {
     }
   }
 
-  useEffect(() => { load() }, [viewDate])
+  useEffect(() => { if (viewDate) load() }, [viewDate])
 
-  // Listen for simulation reset to refresh chart
+  // Listen for simulation reset to refresh chart and sync simDate
   useEffect(() => {
-    const handleRefresh = () => load()
+    const handleRefresh = (e) => {
+      if (e.detail?.date) {
+        const d = new Date(e.detail.date)
+        setSimDate(d)
+        setViewDate(d)
+      }
+      load()
+    }
     window.addEventListener('simulation-reset', handleRefresh)
     return () => window.removeEventListener('simulation-reset', handleRefresh)
   }, [])
@@ -280,6 +305,18 @@ export default function AdminDashboard() {
     ? (resources || []).filter((r) => r.location === location)
     : (resources || [])
 
+  if (!viewDate) {
+    return (
+      <div>
+        <div className="page-header">
+          <h1>Admin Dashboard</h1>
+          <p>Monitor schedule, configure settings, and control simulation.</p>
+        </div>
+        <div className="text-secondary" style={{ padding: '2rem' }}>Loading...</div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -297,7 +334,9 @@ export default function AdminDashboard() {
             try {
               const res = await api.advanceDay();
               if (res && res.current_date) {
-                setViewDate(new Date(res.current_date));
+                const d = new Date(res.current_date);
+                setViewDate(d);
+                setSimDate(d);
                 window.dispatchEvent(new CustomEvent('simulation-reset', { detail: { date: res.current_date } }));
               } else {
                 window.dispatchEvent(new Event('simulation-reset'));
@@ -313,7 +352,9 @@ export default function AdminDashboard() {
             try {
               const res = await api.advanceHour();
               if (res && res.current_date) {
-                setViewDate(new Date(res.current_date));
+                const d = new Date(res.current_date);
+                setViewDate(d);
+                setSimDate(d);
                 window.dispatchEvent(new CustomEvent('simulation-reset', { detail: { date: res.current_date } }));
               } else {
                 window.dispatchEvent(new Event('simulation-reset'));
@@ -329,13 +370,11 @@ export default function AdminDashboard() {
           <button className="btn btn--danger" onClick={async () => {
             if (!confirm('Reset simulation to Feb 14?')) return;
             try {
-              const res = await api.resetTime();
-              // Also reset full sim data if desired, but user asked for date reset button. 
-              // Usually reset implies full reset. Let's call full reset to be safe or just time reset? 
-              // "reset button next to it which resets back to feb 14"
-              // Let's assume full reset for consistency.
+              await api.resetTime();
               await api.resetSimulation();
-              setViewDate(new Date("2026-02-14T09:00:00"));
+              const d = new Date("2026-02-15T09:00:00");
+              setViewDate(d);
+              setSimDate(d);
               window.dispatchEvent(new Event('simulation-reset'));
               await load();
             } catch (e) { alert(e.message) }
@@ -385,6 +424,7 @@ export default function AdminDashboard() {
           auctions={auctions}
           selectedSlots={selectedSlot ? [selectedSlot] : []}
           onToggleSlot={(slot) => setSelectedSlot((prev) => prev && prev.id === slot.id ? null : slot)}
+          simDate={simDate}
         />
       )}
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-export default function RoomTimeGrid({ resources, auctions, selectedSlots, onToggleSlot }) {
+export default function RoomTimeGrid({ resources, auctions, selectedSlots, onToggleSlot, simDate }) {
 
   // Process auctions into a resource-time map
   const { slotsByResource, sortedTimes } = useMemo(() => {
@@ -70,9 +70,10 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlots, onTog
               </div>,
               ...sortedTimes.map((t) => {
                 const cellData = rowData[t]
+                const isPast = simDate && new Date(t) < simDate
 
                 if (!cellData) {
-                  return <div key={`${r.id}-${t}`} className="room-grid__cell" style={{ background: '#f5f5f3' }}>
+                  return <div key={`${r.id}-${t}`} className="room-grid__cell" style={{ background: '#f5f5f3', opacity: isPast ? 0.4 : 1 }}>
                     <span className="text-secondary" style={{ fontSize: '0.7rem' }}>—</span>
                   </div>
                 }
@@ -81,15 +82,21 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlots, onTog
                 const isSelected = selectedSlots.some((s) => s.id === slot.id)
                 const isBooked = slot.status === 'booked'
                 const isActive = auction?.status === 'active'
+                const isUnavailable = isPast || isBooked
 
                 return (
                   <div
                     key={`${r.id}-${t}`}
                     className={`room-grid__cell${isSelected ? ' selected' : ''}${isBooked ? ' booked' : ''}`}
-                    onClick={() => !isBooked && onToggleSlot(slot)}
-                    style={isBooked ? { cursor: 'default' } : undefined}
+                    onClick={() => !isUnavailable && onToggleSlot(slot)}
+                    style={{
+                      ...(isUnavailable ? { cursor: 'default' } : {}),
+                      ...(isPast ? { opacity: 0.4 } : {}),
+                    }}
                   >
-                    {isBooked ? (
+                    {isPast && !isBooked ? (
+                      <span className="text-secondary" style={{ fontSize: '0.7rem' }}>Past</span>
+                    ) : isBooked ? (
                       <span style={{ fontSize: '0.7rem' }}>Booked</span>
                     ) : auction ? (
                       <>

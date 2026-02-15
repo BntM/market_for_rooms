@@ -58,11 +58,54 @@ export default function PettingZooSimulator() {
     // Apply state
     const [applying, setApplying] = useState(false)
 
+    // Load live config state
+    const [loadingConfig, setLoadingConfig] = useState(false)
+
+    // Agent profiles state
+    const [profilesOpen, setProfilesOpen] = useState(false)
+    const [agentProfiles, setAgentProfiles] = useState([
+        { name: 'Heavy', share: 20, urgency_range: [0.7, 1.0], budget_sensitivity_range: [0.1, 0.4], base_value_range: [85, 100] },
+        { name: 'Moderate', share: 30, urgency_range: [0.4, 0.7], budget_sensitivity_range: [0.4, 0.6], base_value_range: [65, 85] },
+        { name: 'Light', share: 50, urgency_range: [0.1, 0.4], budget_sensitivity_range: [0.6, 0.9], base_value_range: [40, 65] },
+    ])
+
     useEffect(() => {
         return () => {
             if (pollRef.current) clearInterval(pollRef.current)
         }
     }, [])
+
+    const loadLiveConfig = async () => {
+        setLoadingConfig(true)
+        try {
+            const [config, resources] = await Promise.all([api.getConfig(), api.getResources()])
+            if (resources?.length) setNumRooms(resources.length)
+            if (config) {
+                if (config.dutch_start_price != null) setStartPrice(config.dutch_start_price)
+                if (config.dutch_min_price != null) setMinPrice(config.dutch_min_price)
+                if (config.dutch_price_step != null) setPriceStep(config.dutch_price_step)
+                if (config.token_starting_amount != null) setSingleAmount(config.token_starting_amount)
+                if (config.token_frequency_days != null) setSingleFreq(config.token_frequency_days)
+            }
+        } catch (e) {
+            alert('Failed to load config: ' + e.message)
+        } finally {
+            setLoadingConfig(false)
+        }
+    }
+
+    const updateProfile = (index, field, value) => {
+        setAgentProfiles(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p))
+    }
+
+    const updateProfileRange = (index, field, rangeIndex, value) => {
+        setAgentProfiles(prev => prev.map((p, i) => {
+            if (i !== index) return p
+            const newRange = [...p[field]]
+            newRange[rangeIndex] = parseFloat(value) || 0
+            return { ...p, [field]: newRange }
+        }))
+    }
 
     const parseList = (str, parser) => str.split(',').map(s => parser(s.trim())).filter(v => !isNaN(v))
 
@@ -78,6 +121,13 @@ export default function PettingZooSimulator() {
         high_demand_days: [[hdStart, hdEnd]],
         token_amount: singleAmount,
         token_frequency: singleFreq,
+        agent_profiles: agentProfiles.map(p => ({
+            name: p.name,
+            share: p.share / 100,
+            urgency_range: p.urgency_range,
+            budget_sensitivity_range: p.budget_sensitivity_range,
+            base_value_range: p.base_value_range,
+        })),
     })
 
     const runGridSearch = async () => {
@@ -248,7 +298,12 @@ export default function PettingZooSimulator() {
 
             {/* Config Panel */}
             <div className="card" style={{ marginBottom: '2rem' }}>
-                <h2 style={{ marginTop: 0 }}>Configuration</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h2 style={{ margin: 0 }}>Configuration</h2>
+                    <button className="btn btn--secondary" onClick={loadLiveConfig} disabled={loadingConfig}>
+                        {loadingConfig ? 'Loading...' : 'Load Live Config'}
+                    </button>
+                </div>
                 <div className="grid">
                     <div className="form-group">
                         <label>Agents</label>
@@ -310,6 +365,85 @@ export default function PettingZooSimulator() {
                             <input type="text" value={freqsStr} onChange={e => setFreqsStr(e.target.value)} />
                         </div>
                     </div>
+                </div>
+
+                <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+                    <h3
+                        style={{ margin: '0 0 0.75rem', cursor: 'pointer', userSelect: 'none' }}
+                        onClick={() => setProfilesOpen(!profilesOpen)}
+                    >
+                        {profilesOpen ? '\u25BC' : '\u25B6'} Agent Profiles (Pareto Distribution)
+                    </h3>
+                    {profilesOpen && (
+                        <div>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', margin: '0 0 0.75rem' }}>
+                                Heavy users (small share) bid early at high prices. Shares should sum to 100%.
+                            </p>
+                            {agentProfiles.map((profile, idx) => (
+                                <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                                    <input
+                                        type="text"
+                                        value={profile.name}
+                                        onChange={e => updateProfile(idx, 'name', e.target.value)}
+                                        style={{ width: '5rem' }}
+                                        placeholder="Name"
+                                    />
+                                    <label style={{ fontSize: '0.75rem', width: '3rem' }}>Share%</label>
+                                    <input
+                                        type="number"
+                                        value={profile.share}
+                                        onChange={e => updateProfile(idx, 'share', parseFloat(e.target.value) || 0)}
+                                        style={{ width: '3.5rem' }}
+                                    />
+                                    <label style={{ fontSize: '0.75rem' }}>Urgency</label>
+                                    <input
+                                        type="number" step="0.1" min="0" max="1"
+                                        value={profile.urgency_range[0]}
+                                        onChange={e => updateProfileRange(idx, 'urgency_range', 0, e.target.value)}
+                                        style={{ width: '3.5rem' }}
+                                    />
+                                    <span>-</span>
+                                    <input
+                                        type="number" step="0.1" min="0" max="1"
+                                        value={profile.urgency_range[1]}
+                                        onChange={e => updateProfileRange(idx, 'urgency_range', 1, e.target.value)}
+                                        style={{ width: '3.5rem' }}
+                                    />
+                                    <label style={{ fontSize: '0.75rem' }}>Sensitivity</label>
+                                    <input
+                                        type="number" step="0.1" min="0" max="1"
+                                        value={profile.budget_sensitivity_range[0]}
+                                        onChange={e => updateProfileRange(idx, 'budget_sensitivity_range', 0, e.target.value)}
+                                        style={{ width: '3.5rem' }}
+                                    />
+                                    <span>-</span>
+                                    <input
+                                        type="number" step="0.1" min="0" max="1"
+                                        value={profile.budget_sensitivity_range[1]}
+                                        onChange={e => updateProfileRange(idx, 'budget_sensitivity_range', 1, e.target.value)}
+                                        style={{ width: '3.5rem' }}
+                                    />
+                                    <label style={{ fontSize: '0.75rem' }}>Value</label>
+                                    <input
+                                        type="number"
+                                        value={profile.base_value_range[0]}
+                                        onChange={e => updateProfileRange(idx, 'base_value_range', 0, e.target.value)}
+                                        style={{ width: '3.5rem' }}
+                                    />
+                                    <span>-</span>
+                                    <input
+                                        type="number"
+                                        value={profile.base_value_range[1]}
+                                        onChange={e => updateProfileRange(idx, 'base_value_range', 1, e.target.value)}
+                                        style={{ width: '3.5rem' }}
+                                    />
+                                </div>
+                            ))}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
+                                Total share: {agentProfiles.reduce((s, p) => s + p.share, 0)}%
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>

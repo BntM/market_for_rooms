@@ -12,7 +12,25 @@ export default function Marketplace() {
   const [location, setLocation] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [viewDate, setViewDate] = useState(new Date()) // Default to today
+  const [viewDate, setViewDate] = useState(null)
+  const [simDate, setSimDate] = useState(null)
+
+  // Initialize viewDate from simulation time
+  useEffect(() => {
+    api.getConfig().then(c => {
+      if (c?.current_simulation_date) {
+        const d = new Date(c.current_simulation_date)
+        setViewDate(d)
+        setSimDate(d)
+      } else {
+        setViewDate(new Date())
+        setSimDate(new Date())
+      }
+    }).catch(() => {
+      setViewDate(new Date())
+      setSimDate(new Date())
+    })
+  }, [])
 
   const load = async () => {
     setLoading(true)
@@ -48,11 +66,20 @@ export default function Marketplace() {
   }
 
   // Reload when date changes
-  useEffect(() => { load() }, [viewDate])
+  useEffect(() => { if (viewDate) load() }, [viewDate])
 
   // Listen for simulation reset
   useEffect(() => {
-    const handleReset = () => { load(); setRefreshKey((k) => k + 1); setSelectedSlots([]) }
+    const handleReset = (e) => {
+      if (e.detail?.date) {
+        const d = new Date(e.detail.date)
+        setSimDate(d)
+        setViewDate(d)
+      }
+      load()
+      setRefreshKey((k) => k + 1)
+      setSelectedSlots([])
+    }
     window.addEventListener('simulation-reset', handleReset)
     return () => window.removeEventListener('simulation-reset', handleReset)
   }, [])
@@ -137,6 +164,18 @@ export default function Marketplace() {
     }
   }
 
+  if (!viewDate) {
+    return (
+      <div>
+        <div className="page-header">
+          <h1>Marketplace</h1>
+          <p>Browse available rooms and place bids on time slots</p>
+        </div>
+        <div className="text-secondary" style={{ padding: '2rem' }}>Loading...</div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -215,6 +254,7 @@ export default function Marketplace() {
           auctions={auctions}
           selectedSlots={selectedSlots}
           onToggleSlot={handleToggleSlot}
+          simDate={simDate}
         />
       )}
 

@@ -7,7 +7,6 @@ import AdminDashboard from './admin/AdminDashboard'
 import RoomManager from './admin/RoomManager'
 import PriceMonitor from './admin/PriceMonitor'
 import HistoricalAnalysis from './admin/HistoricalAnalysis'
-import InteractiveSim from './admin/InteractiveSim'
 import MarketSimulator from './admin/MarketSimulator'
 import PettingZooSimulator from './admin/PettingZooSimulator'
 import Initialization from './admin/Initialization'
@@ -25,7 +24,6 @@ export default function App() {
         <Route path="/admin/rooms" element={<RoomManager />} />
         <Route path="/admin/prices" element={<PriceMonitor />} />
         <Route path="/admin/analysis" element={<HistoricalAnalysis />} />
-        <Route path="/admin/simulator" element={<InteractiveSim />} />
         <Route path="/admin/market-old" element={<MarketSimulator />} />
         <Route path="/admin/pz-sim" element={<PettingZooSimulator />} />
         <Route path="/admin/init" element={<Initialization />} />

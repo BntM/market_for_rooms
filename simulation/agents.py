@@ -3,32 +3,40 @@
 import random
 from typing import List
 
-from .config import SimulationConfig
+from .config import AgentProfile, SimulationConfig
 from .market_state import SimAgent, SimAuction
 
 
 def generate_agents(config: SimulationConfig, rng: random.Random) -> List[SimAgent]:
-    """Generate agents with preferences drawn from configured distributions."""
+    """Generate agents with preferences drawn from configured distributions.
+
+    Uses agent_profiles to create Pareto-style tiers where heavy users
+    (small share) have high urgency and low price sensitivity.
+    """
     agents = []
     num_locations = config.num_rooms
     loc_weights = config.location_weights[:num_locations]
     time_weights = config.time_weights
 
-    for i in range(config.num_agents):
-        preferred_time = _weighted_choice(list(range(len(time_weights))), time_weights, rng)
-        preferred_location = _weighted_choice(list(range(num_locations)), loc_weights, rng)
-        budget_sensitivity = rng.uniform(0.2, 0.9)
-        urgency = rng.uniform(0.2, 0.8)
-        base_value = rng.uniform(60.0, 100.0)
+    agent_id = 0
+    for profile in config.agent_profiles:
+        count = round(profile.share * config.num_agents)
+        for _ in range(count):
+            preferred_time = _weighted_choice(list(range(len(time_weights))), time_weights, rng)
+            preferred_location = _weighted_choice(list(range(num_locations)), loc_weights, rng)
+            budget_sensitivity = rng.uniform(*profile.budget_sensitivity_range)
+            urgency = rng.uniform(*profile.urgency_range)
+            base_value = rng.uniform(*profile.base_value_range)
 
-        agents.append(SimAgent(
-            id=i,
-            preferred_time=preferred_time,
-            preferred_location=preferred_location,
-            budget_sensitivity=budget_sensitivity,
-            urgency=urgency,
-            base_value=base_value,
-        ))
+            agents.append(SimAgent(
+                id=agent_id,
+                preferred_time=preferred_time,
+                preferred_location=preferred_location,
+                budget_sensitivity=budget_sensitivity,
+                urgency=urgency,
+                base_value=base_value,
+            ))
+            agent_id += 1
 
     return agents
 
