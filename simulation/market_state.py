@@ -55,6 +55,9 @@ class SimBooking:
     slot_id: int
     price: float
     day: int
+    preferred_time_match: bool = False
+    preferred_location_match: bool = False
+    consumer_surplus: float = 0.0  # WTP - price paid
 
 
 @dataclass

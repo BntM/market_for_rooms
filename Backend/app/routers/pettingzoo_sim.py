@@ -87,11 +87,15 @@ async def run_single(config: PZSimConfig):
 
     return PZSingleResponse(
         metrics=PZMetricsResponse(
-            supply_demand_ratio=metrics.supply_demand_ratio,
+            avg_satisfaction=metrics.avg_satisfaction,
+            preference_match_rate=metrics.preference_match_rate,
+            avg_consumer_surplus=metrics.avg_consumer_surplus,
+            access_rate=metrics.access_rate,
             utilization_rate=metrics.utilization_rate,
             price_volatility=metrics.price_volatility,
-            unmet_demand=metrics.unmet_demand,
             gini_coefficient=metrics.gini_coefficient,
+            supply_demand_ratio=metrics.supply_demand_ratio,
+            unmet_demand=metrics.unmet_demand,
             stability_score=metrics.stability_score,
         ),
         daily_detail=daily_detail,

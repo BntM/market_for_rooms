@@ -28,18 +28,18 @@ export default function PettingZooSimulator() {
     // Config state
     const [numAgents, setNumAgents] = useState(30)
     const [numRooms, setNumRooms] = useState(5)
-    const [maxDays, setMaxDays] = useState(28)
+    const [maxDays, setMaxDays] = useState(14)
     const [startPrice, setStartPrice] = useState(100)
     const [minPrice, setMinPrice] = useState(10)
     const [priceStep, setPriceStep] = useState(5)
     const [maxTicks, setMaxTicks] = useState(20)
-    const [hdStart, setHdStart] = useState(20)
-    const [hdEnd, setHdEnd] = useState(28)
-    const [numSeeds, setNumSeeds] = useState(5)
+    const [hdStart, setHdStart] = useState(10)
+    const [hdEnd, setHdEnd] = useState(14)
+    const [numSeeds, setNumSeeds] = useState(3)
 
     // Grid search ranges
-    const [amountsStr, setAmountsStr] = useState('25, 50, 75, 100, 125, 150, 200, 300')
-    const [freqsStr, setFreqsStr] = useState('1, 2, 3, 5, 7, 10, 14')
+    const [amountsStr, setAmountsStr] = useState('50, 75, 100, 150, 200')
+    const [freqsStr, setFreqsStr] = useState('1, 3, 5, 7, 14')
 
     // Job state
     const [jobId, setJobId] = useState(null)
@@ -159,11 +159,11 @@ export default function PettingZooSimulator() {
                         pollRef.current = null
                         setError(status.error || 'Grid search failed')
                         setRunning(false)
-                    } else if (Date.now() - startTime > 300000) {
-                        // 5 minute timeout
+                    } else if (Date.now() - startTime > 600000) {
+                        // 10 minute timeout
                         clearInterval(pollRef.current)
                         pollRef.current = null
-                        setError('Grid search timed out after 5 minutes')
+                        setError('Grid search timed out after 10 minutes')
                         setRunning(false)
                     }
                 } catch (e) {
@@ -272,19 +272,24 @@ export default function PettingZooSimulator() {
             labels: top5.map(r => `${r.token_amount} tokens / ${r.token_frequency}d`),
             datasets: [
                 {
-                    label: 'Stability Score (lower = better)',
-                    data: top5.map(r => r.stability_score),
-                    backgroundColor: '#36a2eb',
-                },
-                {
-                    label: 'Utilization Rate (0-1)',
-                    data: top5.map(r => r.utilization_rate),
+                    label: 'Satisfaction (0-1, higher = better)',
+                    data: top5.map(r => r.avg_satisfaction),
                     backgroundColor: '#4bc0c0',
                 },
                 {
-                    label: 'Unmet Demand (0-1)',
-                    data: top5.map(r => r.unmet_demand),
-                    backgroundColor: '#ff6384',
+                    label: 'Access Rate (0-1)',
+                    data: top5.map(r => r.access_rate),
+                    backgroundColor: '#36a2eb',
+                },
+                {
+                    label: 'Preference Match (0-1)',
+                    data: top5.map(r => r.preference_match_rate),
+                    backgroundColor: '#ffce56',
+                },
+                {
+                    label: 'Fairness (1 - Gini)',
+                    data: top5.map(r => 1 - r.gini_coefficient),
+                    backgroundColor: '#9966ff',
                 },
             ],
         }
@@ -520,16 +525,16 @@ export default function PettingZooSimulator() {
                         </div>
                         <div>
                             <div style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                                {result.best.stability_score.toFixed(3)}
+                                {(result.best.avg_satisfaction * 100).toFixed(1)}%
                             </div>
-                            <div style={{ color: 'var(--color-text-secondary)' }}>stability score (lower = better)</div>
+                            <div style={{ color: 'var(--color-text-secondary)' }}>agent satisfaction</div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem' }}>
+                            <div>Access Rate: <strong>{(result.best.access_rate * 100).toFixed(1)}%</strong></div>
+                            <div>Preference Match: <strong>{(result.best.preference_match_rate * 100).toFixed(1)}%</strong></div>
                             <div>Utilization: {(result.best.utilization_rate * 100).toFixed(1)}%</div>
-                            <div>S/D Ratio: {result.best.supply_demand_ratio.toFixed(2)}</div>
-                            <div>Price Vol: {result.best.price_volatility.toFixed(3)}</div>
-                            <div>Unmet: {(result.best.unmet_demand * 100).toFixed(1)}%</div>
-                            <div>Gini: {result.best.gini_coefficient.toFixed(3)}</div>
+                            <div>Fairness (1-Gini): {((1 - result.best.gini_coefficient) * 100).toFixed(1)}%</div>
+                            <div>Price Stability: {(Math.max(0, 1 - result.best.price_volatility) * 100).toFixed(1)}%</div>
                         </div>
                     </div>
                     <button
@@ -548,12 +553,12 @@ export default function PettingZooSimulator() {
                 <div className="card" style={{ marginBottom: '2rem' }}>
                     <h2 style={{ marginTop: 0 }}>Single Simulation Results</h2>
                     <div className="grid">
-                        <div>Stability Score: <strong>{singleResult.metrics.stability_score.toFixed(3)}</strong></div>
+                        <div>Satisfaction: <strong>{(singleResult.metrics.avg_satisfaction * 100).toFixed(1)}%</strong></div>
+                        <div>Access Rate: <strong>{(singleResult.metrics.access_rate * 100).toFixed(1)}%</strong></div>
+                        <div>Preference Match: <strong>{(singleResult.metrics.preference_match_rate * 100).toFixed(1)}%</strong></div>
+                        <div>Avg Surplus: <strong>{singleResult.metrics.avg_consumer_surplus.toFixed(1)} tokens</strong></div>
                         <div>Utilization: <strong>{(singleResult.metrics.utilization_rate * 100).toFixed(1)}%</strong></div>
-                        <div>S/D Ratio: <strong>{singleResult.metrics.supply_demand_ratio.toFixed(2)}</strong></div>
-                        <div>Price Volatility: <strong>{singleResult.metrics.price_volatility.toFixed(3)}</strong></div>
-                        <div>Unmet Demand: <strong>{(singleResult.metrics.unmet_demand * 100).toFixed(1)}%</strong></div>
-                        <div>Gini: <strong>{singleResult.metrics.gini_coefficient.toFixed(3)}</strong></div>
+                        <div>Fairness (Gini): <strong>{singleResult.metrics.gini_coefficient.toFixed(3)}</strong></div>
                     </div>
                 </div>
             )}
@@ -587,7 +592,7 @@ export default function PettingZooSimulator() {
                     <div className="card" style={{ gridColumn: '1 / -1' }}>
                         <h3>Top 5 Token Allocations Compared</h3>
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0 0 0.5rem' }}>
-                            Ranked by stability score. Lower stability + higher utilization + lower unmet demand = better.
+                            Ranked by agent satisfaction. Higher bars = better for students.
                         </p>
                         <Bar data={getTop5Chart()} options={top5Opts} />
                     </div>

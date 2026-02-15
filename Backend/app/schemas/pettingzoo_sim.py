@@ -44,12 +44,16 @@ class PZGridSearchRequest(BaseModel):
 
 
 class PZMetricsResponse(BaseModel):
-    supply_demand_ratio: float
-    utilization_rate: float
-    price_volatility: float
-    unmet_demand: float
-    gini_coefficient: float
-    stability_score: float
+    avg_satisfaction: float = 0.0
+    preference_match_rate: float = 0.0
+    avg_consumer_surplus: float = 0.0
+    access_rate: float = 0.0
+    utilization_rate: float = 0.0
+    price_volatility: float = 0.0
+    gini_coefficient: float = 0.0
+    supply_demand_ratio: float = 0.0
+    unmet_demand: float = 0.0
+    stability_score: float = 0.0
 
 
 class PZSingleResponse(BaseModel):
@@ -61,11 +65,14 @@ class PZGridSearchResult(BaseModel):
     token_amount: float
     token_frequency: int
     stability_score: float
-    supply_demand_ratio: float
-    utilization_rate: float
-    price_volatility: float
-    unmet_demand: float
-    gini_coefficient: float
+    avg_satisfaction: float = 0.0
+    preference_match_rate: float = 0.0
+    access_rate: float = 0.0
+    utilization_rate: float = 0.0
+    price_volatility: float = 0.0
+    gini_coefficient: float = 0.0
+    supply_demand_ratio: float = 0.0
+    unmet_demand: float = 0.0
 
 
 class PZGridSearchResponse(BaseModel):

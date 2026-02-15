@@ -10,7 +10,7 @@ from gymnasium import spaces
 from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector
 
-from .agents import generate_agents, should_bid
+from .agents import compute_utility, generate_agents, should_bid
 from .config import SimulationConfig
 from .market_state import (
     MarketState, SimAuction, SimBooking, SimRoom, SimTimeSlot,
@@ -283,6 +283,133 @@ class RoomMarketEnv(AECEnv):
             self.truncations[agent],
             self.infos[agent],
         )
+
+
+def run_environment_fast(config: SimulationConfig) -> MarketState:
+    """Fast-path runner that bypasses PettingZoo AEC machinery.
+
+    Produces identical market outcomes to run_environment() but skips numpy
+    observations, agent_selector, string agent IDs, and reward tracking.
+    """
+    rng = random.Random(config.seed)
+
+    state = MarketState()
+    sim_agents = generate_agents(config, rng)
+
+    # Init rooms
+    rooms = []
+    for i in range(config.num_rooms):
+        room = SimRoom(id=i, name=f"Room_{i}", location_index=i)
+        rooms.append(room)
+        state.rooms.append(room)
+
+    def is_high_demand(day: int) -> bool:
+        for start, end in config.high_demand_days:
+            if start <= day <= end:
+                return True
+        return False
+
+    def create_day_auctions(day: int) -> list:
+        auctions = []
+        for room in rooms:
+            for t in range(config.slots_per_room_per_day):
+                slot_id = state.next_slot_id()
+                slot = SimTimeSlot(id=slot_id, room_id=room.id, day=day, time_index=t)
+                state.slots[slot_id] = slot
+                auction = SimAuction(
+                    id=state.next_auction_id(),
+                    slot_id=slot_id,
+                    room_id=room.id,
+                    day=day,
+                    time_index=t,
+                    location_index=room.location_index,
+                    start_price=config.auction_start_price,
+                    min_price=config.auction_min_price,
+                    price_step=config.auction_price_step,
+                    current_price=config.auction_start_price,
+                )
+                auctions.append(auction)
+                state.total_slots_offered += 1
+        state.daily_auctions[day] = auctions
+        return auctions
+
+    # Allocate initial tokens
+    for sa in sim_agents:
+        sa.balance += config.token_amount
+
+    for day in range(config.max_days):
+        # Token allocation (skip day 0 — already allocated above)
+        if day > 0 and day % config.token_frequency == 0:
+            for sa in sim_agents:
+                sa.balance += config.token_amount
+
+        day_auctions = create_day_auctions(day)
+        is_hd = is_high_demand(day)
+
+        for tick in range(config.max_ticks):
+            # Shuffle agent order each tick to avoid bias
+            agent_order = list(sim_agents)
+            rng.shuffle(agent_order)
+
+            for sa in agent_order:
+                # Find a bid — shuffle auction indices to avoid bias
+                indices = list(range(len(day_auctions)))
+                rng.shuffle(indices)
+                for i in indices:
+                    auction = day_auctions[i]
+                    if should_bid(sa, auction, is_hd):
+                        # Process bid
+                        state.total_bids_attempted += 1
+                        if not auction.completed and sa.balance >= auction.current_price:
+                            sa.balance -= auction.current_price
+                            auction.completed = True
+                            auction.winner_id = sa.id
+                            auction.clearing_price = auction.current_price
+                            sa.bookings.append(auction.slot_id)
+                            wtp = compute_utility(sa, auction, is_hd)
+                            state.bookings.append(SimBooking(
+                                agent_id=sa.id,
+                                slot_id=auction.slot_id,
+                                price=auction.current_price,
+                                day=day,
+                                preferred_time_match=auction.time_index == sa.preferred_time,
+                                preferred_location_match=auction.location_index == sa.preferred_location,
+                                consumer_surplus=wtp - auction.current_price,
+                            ))
+                            state.total_slots_booked += 1
+                            if day not in state.daily_clearing_prices:
+                                state.daily_clearing_prices[day] = []
+                            state.daily_clearing_prices[day].append(auction.current_price)
+                        break
+
+            # Check if all auctions are done
+            if all(a.completed for a in day_auctions):
+                break
+
+            # Drop prices on active auctions
+            for auction in day_auctions:
+                if not auction.completed:
+                    auction.current_price = max(
+                        auction.min_price,
+                        auction.current_price - auction.price_step,
+                    )
+                    auction.tick += 1
+
+        # End-of-day metrics
+        booked = sum(1 for a in day_auctions if a.completed)
+        total = len(day_auctions)
+        state.daily_utilization[day] = booked / total if total > 0 else 0.0
+
+        # Unmet demand
+        wanted_count = 0
+        for sa in sim_agents:
+            for auction in day_auctions:
+                if not auction.completed and should_bid(sa, auction, is_hd):
+                    wanted_count += 1
+                    break
+        state.daily_unmet_demand[day] = wanted_count
+
+    return state
 
 
 def run_environment(config: SimulationConfig) -> MarketState:

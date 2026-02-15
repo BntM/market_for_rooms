@@ -5,13 +5,13 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .config import GridSearchConfig, SimulationConfig
-from .environment import run_environment
+from .environment import run_environment, run_environment_fast
 from .metrics import StabilityMetrics, compute_metrics
 
 
 def run_single_simulation(config: SimulationConfig) -> Tuple[StabilityMetrics, Dict[str, Any]]:
     """Run a single simulation and return metrics + daily detail."""
-    state = run_environment(config)
+    state = run_environment_fast(config)
     metrics = compute_metrics(state, config.num_agents)
 
     daily_detail = {
@@ -27,6 +27,9 @@ def run_grid_search(
     progress_callback: Optional[Callable[[float], None]] = None,
 ) -> Dict[str, Any]:
     """Run grid search over token_amounts x token_frequencies.
+
+    Uses the fast-path runner (bypasses PettingZoo overhead) for each run.
+    With ~0.13s per run, 280 runs complete in ~36s serially.
 
     Returns dict with:
       - best: {token_amount, token_frequency, stability_score, metrics}
@@ -52,7 +55,8 @@ def run_grid_search(
                 cfg.token_frequency = freq
                 cfg.seed = grid_config.base_seed + seed_offset
 
-                metrics, _ = run_single_simulation(cfg)
+                state = run_environment_fast(cfg)
+                metrics = compute_metrics(state, cfg.num_agents)
                 seed_metrics.append(metrics)
 
                 completed_runs += 1
@@ -66,11 +70,14 @@ def run_grid_search(
                 "token_amount": amount,
                 "token_frequency": freq,
                 "stability_score": avg.stability_score,
-                "supply_demand_ratio": avg.supply_demand_ratio,
+                "avg_satisfaction": avg.avg_satisfaction,
+                "preference_match_rate": avg.preference_match_rate,
+                "access_rate": avg.access_rate,
                 "utilization_rate": avg.utilization_rate,
                 "price_volatility": avg.price_volatility,
-                "unmet_demand": avg.unmet_demand,
                 "gini_coefficient": avg.gini_coefficient,
+                "supply_demand_ratio": avg.supply_demand_ratio,
+                "unmet_demand": avg.unmet_demand,
             })
 
     # Sort by stability score (lower = better)
@@ -118,18 +125,26 @@ def _average_metrics(metrics_list: List[StabilityMetrics]) -> StabilityMetrics:
 
     avg = StabilityMetrics()
     for m in metrics_list:
-        avg.supply_demand_ratio += m.supply_demand_ratio
+        avg.avg_satisfaction += m.avg_satisfaction
+        avg.preference_match_rate += m.preference_match_rate
+        avg.avg_consumer_surplus += m.avg_consumer_surplus
+        avg.access_rate += m.access_rate
         avg.utilization_rate += m.utilization_rate
         avg.price_volatility += m.price_volatility
-        avg.unmet_demand += m.unmet_demand
         avg.gini_coefficient += m.gini_coefficient
+        avg.supply_demand_ratio += m.supply_demand_ratio
+        avg.unmet_demand += m.unmet_demand
         avg.stability_score += m.stability_score
 
-    avg.supply_demand_ratio /= n
+    avg.avg_satisfaction /= n
+    avg.preference_match_rate /= n
+    avg.avg_consumer_surplus /= n
+    avg.access_rate /= n
     avg.utilization_rate /= n
     avg.price_volatility /= n
-    avg.unmet_demand /= n
     avg.gini_coefficient /= n
+    avg.supply_demand_ratio /= n
+    avg.unmet_demand /= n
     avg.stability_score /= n
 
     return avg
