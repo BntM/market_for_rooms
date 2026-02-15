@@ -21,7 +21,7 @@ async def get_market_analysis_report(db: AsyncSession = Depends(get_db)):
         total_orders_res = await db.execute(text("SELECT COUNT(*) FROM bookings"))
         total_orders = total_orders_res.scalar() or 0
         
-        avg_price_res = await db.execute(text("SELECT AVG(price_paid) FROM bookings"))
+        avg_price_res = await db.execute(text("SELECT AVG(b.amount) FROM bids b INNER JOIN bookings bk ON bk.bid_id = b.id"))
         avg_price = avg_price_res.scalar() or 0.0
         
         active_auctions_res = await db.execute(text("SELECT COUNT(*) FROM auctions WHERE status = 'active'"))
