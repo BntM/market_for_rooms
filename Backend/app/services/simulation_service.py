@@ -9,6 +9,7 @@ from app.models import (
     AuctionStatus,
     Booking,
     PriceHistory,
+    Resource,
     TimeSlot,
     TimeSlotStatus,
 )

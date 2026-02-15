@@ -259,6 +259,7 @@ export default function Marketplace() {
         />
       )}
 
+
       <SlotDetail
         slots={selectedSlots}
         auctions={auctions}
@@ -269,6 +270,33 @@ export default function Marketplace() {
         onSetOrder={handleSetOrder}
         agents={agents}
       />
+
+      {/* Floating Action Button for Patriot AI */}
+      <div
+        onClick={() => setShowPatriotChat(!showPatriotChat)}
+        style={{
+          position: 'fixed',
+          bottom: '30px',
+          right: '30px',
+          width: '60px',
+          height: '60px',
+          borderRadius: '50%',
+          backgroundColor: '#006633',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+          cursor: 'pointer',
+          zIndex: 999,
+          fontSize: '24px'
+        }}
+        title="Ask Patriot AI"
+      >
+        🤖
+      </div>
+
+      {showPatriotChat && <PatriotChat onClose={() => setShowPatriotChat(false)} />}
     </div>
   )
 }

@@ -9,7 +9,7 @@ from pypdf import PdfReader
 PATRIOT_AI_API_URL = "https://patriotai.gmu.edu/api/internal/userConversations/byGptSystemId/2e6987f9-be64-4fbc-83e5-53c147935e4b"
 # Using the Bearer token provided by the user (truncated for brevity in logs, but full in code)
 # TODO: In production, this token should be refreshed or obtained via OAuth
-PATRIOT_AI_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cG4iOiIyNmVkMjJiYi00NTc0LTQwMDItYmI5OS03M2M2Mzc0NDMzZTUiLCJpcCI6IkVudHJhSWQiLCJlbWFpbCI6ImpkZXJvbWFAZ211LmVkdSIsInV2byI6eyJpZCI6IjIuMjYwMy40MzE5LjAiLCJuYmYiOjE3NzExNjc1NDcsImV4cCI6MTc3MTE2OTM0NywiaWF0IjoxNzcxMTY3NTQ3fQ.srMdZdkvspJCFeJ6czWx93o0ssy0tj_TqbbqM6L1NA8"
+PATRIOT_AI_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cG4iOiIyNmVkMjJiYi00NTc0LTQwMDItYmI5OS03M2M2Mzc0NDMzZTUiLCJpcCI6IkVudHJhSWQiLCJlbWFpbCI6ImpkZXJvbWFAZ211LmVkdSIsInV2byI6eyJpZCI6IjI2ZWQyMmJiLTQ1NzQtNDAwMi1iYjk5LTczYzYzNzQ0MzNlNSIsIm4iOiJKb3NlcGggSGVucnkgRGVSb21hIn0sInVyIjpbXSwiY2FwIjpbXSwidiI6IjIuMjYwMy40MzE5LjAiLCJuYmYiOjE3NzExODc3ODYsImV4cCI6MTc3MTE4OTU4NiwiaWF0IjoxNzcxMTg3Nzg2fQ.lgCFLFWU4plqghHW0oF_EBPmm19gX5HssHuTj7wZlCk"
 SESSION_ID = "6d8564ad-2ccd-4b0e-ae93-7878c87a555d" # Or generate a new one?
 
 class PatriotAIClient:
@@ -106,6 +106,61 @@ class PatriotAIClient:
         except Exception as e:
             print(f"Request failed: {e}")
             return []
+
+    def chat(self, user_message: str) -> str:
+        """
+        Sends a general chat message to Patriot AI with ImageCreation and InternetSearch enabled.
+        Returns the text response (which may include markdown image links).
+        """
+        payload = {
+            "question": user_message,
+            "visionImageIds": [],
+            "attachmentIds": [],
+            "session": {"sessionIdentifier": SESSION_ID},  # Reuse session for context
+            "segmentTraceLogLevel": "NonPersisted",
+            "answerGenerationOptions": {
+                "deploymentIdentifier": "ChatGpt|gpt-5.2-chat",
+                "capabilities": ["ImageCreation", "InternetSearch"]
+            }
+        }
+
+        try:
+            print(f"Sending message to Patriot AI: {user_message}")
+            response = requests.post(PATRIOT_AI_API_URL, headers=self.headers, json=payload, timeout=90)
+            
+            if response.status_code == 200:
+                # Handle potential streaming or direct JSON
+                full_answer = ""
+                content_type = response.headers.get("Content-Type", "")
+                
+                if "stream" in content_type:
+                    for line in response.iter_lines():
+                        if line:
+                            decoded_line = line.decode('utf-8')
+                            if decoded_line.startswith("data:"):
+                                try:
+                                    token_data = json.loads(decoded_line[5:])
+                                    if 'choices' in token_data:
+                                        delta = token_data['choices'][0].get('delta', {}).get('content', '')
+                                        full_answer += delta
+                                    elif 'answer' in token_data:
+                                        full_answer += token_data['answer']
+                                except:
+                                    pass
+                else:
+                    data = response.json()
+                    full_answer = data.get('answer') or data.get('message') or str(data)
+
+                print(f"Patriot AI Response: {full_answer[:200]}...")
+                return full_answer
+            else:
+                error_msg = f"Patriot AI Error: {response.status_code} - {response.text}"
+                print(error_msg)
+                return "I couldn't reach Patriot AI at the moment. Please try again."
+
+        except Exception as e:
+            print(f"Request failed: {e}")
+            return f"Error communicating with Patriot AI: {str(e)}"
 
     def _parse_json_from_text(self, text: str):
         """Extracts JSON list from a text response that might contain markdown."""

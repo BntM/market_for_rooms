@@ -53,3 +53,4 @@ Error: read ECONNRESET
 [2m1:01:08 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/AdminDashboard.jsx[22m
 [2m1:01:20 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/user/Marketplace.jsx[22m
 [2m1:01:29 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/user/SlotDetail.jsx[22m
+[2m3:34:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/user/Marketplace.jsx[22m

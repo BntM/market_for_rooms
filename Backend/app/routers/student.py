@@ -148,8 +148,15 @@ async def chat_with_agent(payload: dict, db: AsyncSession = Depends(get_db)):
     if "upload" in message.lower():
         return {"response": "You can upload your syllabus by clicking the paperclip icon! I'll extract your exam dates automatically."}
 
-    # 3. Call Gemini
-    response_text = await gemini_client.chat_with_market_analyst(message, market_context)
+    # 3. Check intent for "Cool Capabilities" (Search & Images)
+    # If user asks for "Search", "Find", "Generate Image", use Patriot AI
+    lower_msg = message.lower()
+    if any(k in lower_msg for k in ["search", "images", "generate", "create", "find", "who is", "what is"]):
+        print(f"Routing to Patriot AI for advanced capability: {message}")
+        response_text = patriot_client.chat(message)
+    else:
+        # Default to Gemini for Market Analyst Persona
+        response_text = await gemini_client.chat_with_market_analyst(message, market_context)
     
     return {"response": response_text}
 
