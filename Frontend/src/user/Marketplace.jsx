@@ -32,6 +32,18 @@ export default function Marketplace() {
 
   useEffect(() => { load() }, [])
 
+  useEffect(() => {
+    const handleAgentChange = () => {
+      const id = localStorage.getItem('agent_id')
+      if (id && agents.length > 0) {
+        const a = agents.find(ag => ag.id === id)
+        if (a) setSelectedAgent(a)
+      }
+    }
+    window.addEventListener('agent-changed', handleAgentChange)
+    return () => window.removeEventListener('agent-changed', handleAgentChange)
+  }, [agents])
+
   const locations = [...new Set(resources.map((r) => r.location).filter(Boolean))]
   const filtered = location
     ? resources.filter((r) => r.location === location)
@@ -83,13 +95,19 @@ export default function Marketplace() {
             ))}
           </select>
         </div>
+
+        {/* Sync with Global Agent Selector */}
         <div className="form-group">
-          <label>Acting as</label>
+          <label>Acting as (Global)</label>
           <select
             value={selectedAgent?.id || ''}
             onChange={(e) => {
               const a = agents.find((a) => a.id === e.target.value)
-              if (a) setSelectedAgent(a)
+              if (a) {
+                setSelectedAgent(a)
+                localStorage.setItem('agent_id', a.id)
+                window.dispatchEvent(new Event('agent-changed'))
+              }
             }}
           >
             {agents.map((a) => (

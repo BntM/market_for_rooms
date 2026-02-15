@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import random
 
 from app.database import get_db
-from app.models import Resource, TimeSlot, PriceHistory, TimeSlotStatus, AdminConfig
+from app.models import Resource, TimeSlot, PriceHistory, TimeSlotStatus, AdminConfig, Auction, AuctionStatus
 from app.services.historical_analyst import HistoricalAnalyst
 from pydantic import BaseModel
 from typing import Dict, Optional
@@ -103,14 +103,30 @@ async def auto_populate_market(req: ForecastRequest, db: AsyncSession = Depends(
                         
                         # Base price formula + some "ML randomness"
                         base_price = 10.0 * float(loc_w) * float(t_w)
+
+                        # Create Auction for the slot to make it bookable
+                        # Simplification: Create a Dutch auction
+                        from app.models import Auction, AuctionStatus, PriceHistory
+                        
+                        # Use the base price as start price
+                        auction = Auction(
+                            time_slot_id=new_slot.id,
+                            start_price=base_price * 1.5, # Start higher
+                            min_price=base_price * 0.5,
+                            current_price=base_price,
+                            status=AuctionStatus.ACTIVE,
+                            type="dutch"
+                        )
+                        db.add(auction)
+                        await db.flush()
                         
                         # Create a series of price history points for this slot
                         for i in range(5):
                             ph = PriceHistory(
-                                auction_id=None, # It's a forecasted price
+                                auction_id=auction.id, 
                                 time_slot_id=new_slot.id,
                                 price=base_price + random.uniform(-2, 2),
-                                created_at=start_time - timedelta(hours=random.randint(1, 24))
+                                recorded_at=start_time - timedelta(hours=random.randint(1, 24))
                             )
                             db.add(ph)
                             created_prices += 1
