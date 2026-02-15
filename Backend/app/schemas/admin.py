@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -20,6 +21,8 @@ class AdminConfigResponse(BaseModel):
     day_of_week_weight: float | None = 1.0
     global_price_modifier: float | None = 1.0
     lead_time_sensitivity: float | None = 1.0
+    current_simulation_date: datetime | None = None
+    pricing_model_version: int | None = 1
 
     model_config = {"from_attributes": True}
 
@@ -42,3 +45,5 @@ class AdminConfigUpdate(BaseModel):
     day_of_week_weight: float | None = None
     global_price_modifier: float | None = None
     lead_time_sensitivity: float | None = None
+    current_simulation_date: datetime | None = None
+    pricing_model_version: int | None = None

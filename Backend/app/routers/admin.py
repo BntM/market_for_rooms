@@ -173,49 +173,17 @@ async def _process_import(df: pd.DataFrame, db: AsyncSession):
                 }
                 slots_to_insert.append(new_slot)
                 created_slots += 1
-                
-                # Pricing
-                cap_score = min(resource.capacity, 100) / 10.0
-                loc_score = float(loc_pop.get(r_loc, 0.5))
-                day_score = day_pop_map.get(current_day_of_week, 0.5)
-                hour_score = hour_pop_map.get(slot_start.hour, 0.5)
-                
-                lead_ratio = day_offset / 120.0
-                lead_score = 1.0 + (w_lead * (1.0 - lead_ratio))
-                
-                base_price = 10.0
-                combined_score = (
-                    (cap_score * w_cap) + 
-                    (loc_score * w_loc) + 
-                    (day_score * w_dow * 2.0) + 
-                    (hour_score * w_tod * 2.0)
-                ) / 4.0
-                
-                computed_price = max(base_price * g_mod * lead_score * combined_score, 5.0)
-                
-                auction = {
-                    "id": str(uuid.uuid4()),
-                    "time_slot_id": slot_id,
-                    "start_price": computed_price * 1.5,
-                    "min_price": computed_price * 0.5,
-                    "current_price": computed_price,
-                    "status": "active",
-                    "auction_type": "dutch",
-                    "price_step": config.dutch_price_step,
-                    "tick_interval_sec": config.dutch_tick_interval_sec,
-                    "created_at": datetime.now(),
-                    "started_at": None,
-                    "ended_at": None
-                }
-                auctions_to_insert.append(auction)
 
-    # Bulk Insert
+    # Bulk Insert slots first so auctions can reference them
     chunk_size = 500
     for i in range(0, len(slots_to_insert), chunk_size):
         await db.execute(insert(TimeSlot), slots_to_insert[i:i+chunk_size])
-        
-    for i in range(0, len(auctions_to_insert), chunk_size):
-        await db.execute(insert(Auction), auctions_to_insert[i:i+chunk_size])
+    
+    await db.flush()
+
+    # 5. Calculate Initial Prices using the new service
+    from app.services.pricing_service import recalculate_prices
+    await recalculate_prices(db, start_date=start_date, days=days_to_generate)
         
     return {"resources_created": created_resources, "time_slots_created": created_slots}
 

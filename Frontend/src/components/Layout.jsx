@@ -44,14 +44,24 @@ export default function Layout() {
     }
   }, [])
 
+  const handleResetTime = async () => {
+    if (!window.confirm('Reset simulation to Feb 14?')) return
+    try {
+      await api.resetTime()
+      await api.resetSimulation()
+      window.dispatchEvent(new Event('simulation-reset'))
+      fetchDate()
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="top-bar">
         <div className="top-bar__logo">
           Market <span>for</span> Rooms
         </div>
-
-
 
         <nav className="top-bar__nav">
           {nav.map((item) => (
@@ -84,6 +94,22 @@ export default function Layout() {
                 {' '}
                 {simDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
+              <button
+                onClick={handleResetTime}
+                title="Reset to Feb 14"
+                style={{
+                  border: 'none',
+                  background: '#ddd',
+                  borderRadius: '3px',
+                  padding: '2px 6px',
+                  cursor: 'pointer',
+                  fontSize: '0.7rem',
+                  marginLeft: '4px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Reset
+              </button>
             </div>
           )}
           {!isAdmin && <TokenBadge />}
