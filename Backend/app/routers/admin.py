@@ -10,8 +10,35 @@ import uuid
 from app.database import get_db
 from app.models import AdminConfig, Resource, TimeSlot, TimeSlotStatus, Auction, AuctionStatus
 from app.schemas.admin import AdminConfigResponse, AdminConfigUpdate
+from app.services.gemini_client import gemini_client
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+@router.post("/market-analysis")
+async def get_market_analysis_report(db: AsyncSession = Depends(get_db)):
+    # 1. Gather Market Data (Mocking a bit for speed, but using real DB counts)
+    total_orders_res = await db.execute(select(text("COUNT(*) FROM bookings")))
+    total_orders = total_orders_res.scalar()
+    
+    avg_price_res = await db.execute(select(text("AVG(price_paid) FROM bookings")))
+    avg_price = avg_price_res.scalar() or 0.0
+    
+    # Simple revenue calc for last 24h (mock window for now)
+    revenue = float(total_orders) * float(avg_price) 
+    
+    market_data = {
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "total_orders": total_orders,
+        "avg_price": round(avg_price, 2),
+        "revenue_24h": round(revenue, 2),
+        "popular_time": "2:00 PM - 4:00 PM (Simulated)", # Could query time_popularity from config
+        "quiet_time": "8:00 AM - 10:00 AM (Simulated)"
+    }
+    
+    # 2. Call Gemini
+    report = await gemini_client.generate_admin_market_report(market_data)
+    
+    return {"report": report, "data": market_data}
 
 
 async def _get_or_create_config(db: AsyncSession) -> AdminConfig:

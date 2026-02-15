@@ -658,3 +658,17 @@ tbody tr:hover {
 .gap-2 {
   gap: 1rem;
 }
+
+/* PatriotAIChat loading dots */
+@keyframes dotBounce {
+
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-6px);
+  }
+}

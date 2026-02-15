@@ -3,6 +3,7 @@ import api from '../api'
 import RoomTimeGrid from '../user/RoomTimeGrid'
 import SlotDetail from '../user/SlotDetail'
 import { NavLink } from 'react-router-dom'
+import AdminMarketAnalysis from './AdminMarketAnalysis'
 
 // Reusing the config component logic here
 const ConfigSection = () => {
@@ -325,6 +326,9 @@ export default function AdminDashboard() {
       </div>
 
       <ConfigSection />
+      <div className="mb-4">
+        <AdminMarketAnalysis />
+      </div>
       <SimulationSection />
 
       <div className="card mb-2">

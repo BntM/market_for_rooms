@@ -119,25 +119,37 @@ async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
                 db.add(order)
                 orders_created += 1
                 
+from app.services.gemini_client import gemini_client
+from app.models.admin_config import AdminConfig
+from sqlalchemy import select
+
 @router.post("/chat")
-async def chat_with_agent(payload: dict):
+async def chat_with_agent(payload: dict, db: AsyncSession = Depends(get_db)):
     """
-    Send a text message to Patriot AI.
+    Send a text message to Patriot AI / Gemini Market Analyst.
     Payload: {"message": "str", "history": []}
     """
     message = payload.get("message", "")
-    # For now, we are stateless / simplistic 
-    # Use the client to just get a response from the same endpoint? 
-    # The current client `parse_syllabus` is hardcoded for syllabus prompt.
-    # Let's add a generic `chat` method to client first?
-    # Or just mock for now to be safe.
     
-    # Real logic:
-    # response = patriot_client.send_message(message)
+    # 1. Fetch Market Context (Simplified)
+    # In a real app, we'd query average prices, busy slots, etc.
+    config = await db.scalar(select(AdminConfig))
+    sim_time = config.current_simulation_date if config else "Unknown"
     
-    # Mock for "Help me find a room" which isn't implemented in the PDF parser
-    if "help" in message.lower() or "room" in message.lower():
-         return {"response": "I can help you schedule limit orders! Please upload your syllabus PDF so I can extract your exam dates."}
+    market_context = {
+        "sim_time": str(sim_time),
+        "avg_price": "22.5", # Mocked average
+        "busy_hours": "10:00 - 14:00",
+        "trend": "Rising due to upcoming midterms"
+    }
+
+    # 2. Check intent (Simple keyword check for now, can be LLM based later)
+    # If user asks for "Help" or "Upload", guide them.
+    if "upload" in message.lower():
+        return {"response": "You can upload your syllabus by clicking the paperclip icon! I'll extract your exam dates automatically."}
+
+    # 3. Call Gemini
+    response_text = await gemini_client.chat_with_market_analyst(message, market_context)
     
-    return {"response": "I am the Market Room Agent. Upload a syllabus to get started!"}
+    return {"response": response_text}
 
