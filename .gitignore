@@ -6,7 +6,11 @@ Backend/.venv/
 Backend/instance/
 Backend/.pytest_cache/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
+Backend/gmu_room_data_full.csv
+gmu_room_data_full.csv
 
 # Node / React
 node_modules/
