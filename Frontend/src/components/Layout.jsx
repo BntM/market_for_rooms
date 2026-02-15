@@ -11,6 +11,7 @@ const userNav = [
 const adminNav = [
   { to: '/admin', label: 'Dashboard', end: true },
   { to: '/admin/rooms', label: 'Rooms' },
+  { to: '/admin/schedule', label: 'Schedule' },
   { to: '/admin/prices', label: 'Prices' },
   { to: '/admin/config', label: 'Config' },
   { to: '/admin/init', label: 'Initialize' },

@@ -11,6 +11,8 @@ import HistoricalAnalysis from './admin/HistoricalAnalysis'
 import MarketSimulator from './admin/MarketSimulator'
 import Initialization from './admin/Initialization'
 
+import AdminSchedule from './admin/AdminSchedule'
+
 export default function App() {
   return (
     <Routes>
@@ -20,6 +22,7 @@ export default function App() {
         <Route path="/user/bookings" element={<MyBookings />} />
         <Route path="/user/orders" element={<MyOrders />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/schedule" element={<AdminSchedule />} />
         <Route path="/admin/rooms" element={<RoomManager />} />
         <Route path="/admin/config" element={<AuctionConfig />} />
         <Route path="/admin/prices" element={<PriceMonitor />} />

@@ -12,6 +12,8 @@ class AuctionCreate(BaseModel):
     tick_interval_sec: float | None = None
 
 
+from app.schemas.resource import TimeSlotResponse
+
 class AuctionResponse(BaseModel):
     id: str
     time_slot_id: str
@@ -25,6 +27,7 @@ class AuctionResponse(BaseModel):
     created_at: datetime
     started_at: datetime | None = None
     ended_at: datetime | None = None
+    time_slot: TimeSlotResponse | None = None
 
     model_config = {"from_attributes": True}
 

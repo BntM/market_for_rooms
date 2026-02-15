@@ -2,6 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -69,15 +70,24 @@ async def create_auction(data: AuctionCreate, db: AsyncSession = Depends(get_db)
 async def list_auctions(
     status: str | None = None,
     resource_id: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Auction)
+    query = select(Auction).options(joinedload(Auction.time_slot)).join(TimeSlot)
+    
     if status:
         query = query.where(Auction.status == status)
     if resource_id:
-        query = query.join(TimeSlot).where(TimeSlot.resource_id == resource_id)
+        query = query.where(TimeSlot.resource_id == resource_id)
+    if start_date:
+        query = query.where(TimeSlot.start_time >= start_date)
+    if end_date:
+        query = query.where(TimeSlot.end_time <= end_date)
+        
     result = await db.execute(query)
-    return result.scalars().all()
+    # Unique to avoid duplicates if join behaves unexpectedly (though 1:1 here usually)
+    return result.scalars().unique().all()
 
 
 @router.get("/{auction_id}", response_model=AuctionResponse)

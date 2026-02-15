@@ -1,36 +1,33 @@
-import { useState, useEffect } from 'react'
-import api from '../api'
+import { useMemo } from 'react'
 
 export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSelectSlot }) {
-  const [slotsByResource, setSlotsByResource] = useState({})
 
-  useEffect(() => {
-    const loadSlots = async () => {
-      const result = {}
-      for (const r of resources) {
-        try {
-          const slots = await api.getTimeSlots(r.id)
-          result[r.id] = slots
-        } catch {
-          result[r.id] = []
-        }
+  // Process auctions into a resource-time map
+  const { slotsByResource, sortedTimes } = useMemo(() => {
+    const map = {}
+    const times = new Set()
+
+    // Initialize map for all resources (even empty ones)
+    resources.forEach(r => { map[r.id] = {} })
+
+    auctions.forEach(auction => {
+      const slot = auction.time_slot
+      if (slot && map[slot.resource_id]) {
+        map[slot.resource_id][slot.start_time] = { slot, auction }
+        times.add(slot.start_time)
       }
-      setSlotsByResource(result)
-    }
-    if (resources.length > 0) loadSlots()
-  }, [resources])
+    })
 
-  // Collect all unique time slots across resources
-  const allTimes = new Set()
-  Object.values(slotsByResource).forEach((slots) => {
-    slots.forEach((s) => allTimes.add(s.start_time))
-  })
-  const sortedTimes = [...allTimes].sort()
+    return {
+      slotsByResource: map,
+      sortedTimes: [...times].sort()
+    }
+  }, [resources, auctions])
 
   if (sortedTimes.length === 0) {
     return (
       <div className="card text-secondary" style={{ padding: '2rem', textAlign: 'center' }}>
-        No time slots generated yet. Admin needs to generate time slots for rooms.
+        No time slots found for the selected date.
       </div>
     )
   }
@@ -45,14 +42,6 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSele
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
   }
 
-  // Group times by date for header
-  const auctionBySlot = {}
-  auctions.forEach((a) => {
-    auctionBySlot[a.time_slot_id] = a
-  })
-
-  const cols = sortedTimes.length + 1 // +1 for row labels
-
   return (
     <div className="room-grid" style={{ gridTemplateColumns: `160px repeat(${sortedTimes.length}, minmax(80px, 1fr))` }}>
       {/* Header row */}
@@ -66,9 +55,7 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSele
 
       {/* Data rows */}
       {resources.map((r) => {
-        const slots = slotsByResource[r.id] || []
-        const slotMap = {}
-        slots.forEach((s) => { slotMap[s.start_time] = s })
+        const rowData = slotsByResource[r.id] || {}
 
         return [
           <div key={`label-${r.id}`} className="room-grid__row-label">
@@ -80,14 +67,15 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSele
             </div>
           </div>,
           ...sortedTimes.map((t) => {
-            const slot = slotMap[t]
-            if (!slot) {
+            const cellData = rowData[t]
+
+            if (!cellData) {
               return <div key={`${r.id}-${t}`} className="room-grid__cell" style={{ background: '#f5f5f3' }}>
                 <span className="text-secondary" style={{ fontSize: '0.7rem' }}>—</span>
               </div>
             }
 
-            const auction = auctionBySlot[slot.id]
+            const { slot, auction } = cellData
             const isSelected = selectedSlot?.id === slot.id
             const isBooked = slot.status === 'booked'
             const isActive = auction?.status === 'active'
@@ -100,7 +88,7 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSele
               >
                 {isBooked ? (
                   <span style={{ fontSize: '0.7rem' }}>Booked</span>
-                ) : auction ? (
+                ) : (
                   <>
                     <span className={`cell-price ${isActive ? 'price--negative' : ''}`}>
                       {auction.current_price.toFixed(1)}
@@ -109,10 +97,6 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlot, onSele
                       {auction.status}
                     </span>
                   </>
-                ) : (
-                  <span className="text-secondary" style={{ fontSize: '0.7rem' }}>
-                    {slot.status}
-                  </span>
                 )}
               </div>
             )
