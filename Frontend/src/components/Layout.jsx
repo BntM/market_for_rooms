@@ -7,6 +7,7 @@ const userNav = [
   { to: '/user', label: 'Marketplace', end: true },
   { to: '/user/bookings', label: 'My Bookings' },
   { to: '/user/orders', label: 'My Orders' },
+  { to: '/student/upload', label: 'Upload Syllabus' },
 ]
 
 const adminNav = [
