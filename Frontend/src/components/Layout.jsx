@@ -13,6 +13,7 @@ const adminNav = [
   { to: '/admin', label: 'Dashboard', end: true },
   { to: '/admin/rooms', label: 'Rooms' },
   { to: '/admin/prices', label: 'Prices' },
+  { to: '/admin/pz-sim', label: 'Simulate' },
   { to: '/admin/init', label: 'Initialize' },
 ]
 

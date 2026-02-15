@@ -89,6 +89,12 @@ const api = {
 
   // God Mode (ML Models)
   autoPopulateMarket: (data) => request('/god/auto-populate', { method: 'POST', body: JSON.stringify(data) }),
+
+  // PettingZoo Simulation
+  runPZGridSearch: (data) => request('/pz-simulation/run', { method: 'POST', body: JSON.stringify(data) }),
+  getPZStatus: (jobId) => request(`/pz-simulation/status/${jobId}`),
+  runPZSingle: (data) => request('/pz-simulation/single', { method: 'POST', body: JSON.stringify(data) }),
+  applyPZBest: (data) => request('/pz-simulation/apply-best', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export default api;

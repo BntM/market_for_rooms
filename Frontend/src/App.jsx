@@ -8,6 +8,7 @@ import RoomManager from './admin/RoomManager'
 import PriceMonitor from './admin/PriceMonitor'
 import HistoricalAnalysis from './admin/HistoricalAnalysis'
 import MarketSimulator from './admin/MarketSimulator'
+import PettingZooSimulator from './admin/PettingZooSimulator'
 import Initialization from './admin/Initialization'
 
 // Main App Component with Routing
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/admin/prices" element={<PriceMonitor />} />
         <Route path="/admin/analysis" element={<HistoricalAnalysis />} />
         <Route path="/admin/simulator" element={<MarketSimulator />} />
+        <Route path="/admin/pz-sim" element={<PettingZooSimulator />} />
         <Route path="/admin/init" element={<Initialization />} />
       </Route>
     </Routes>
