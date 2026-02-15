@@ -190,7 +190,8 @@ export default function AdminDashboard() {
 
       <div className="card mb-2">
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button className="btn btn--primary" onClick={async () => {
+          <button className="btn btn--primary" disabled={loading} onClick={async () => {
+            setLoading(true)
             try {
               const res = await api.advanceDay();
               if (res && res.current_date) {
@@ -198,12 +199,13 @@ export default function AdminDashboard() {
               }
               window.dispatchEvent(new Event('simulation-reset'));
               await load();
-            } catch (e) { alert(e.message) }
+            } catch (e) { alert(e.message) } finally { setLoading(false) }
           }}>
-            Progress a Day
+            {loading ? 'Processing...' : 'Progress a Day'}
           </button>
 
-          <button className="btn" onClick={async () => {
+          <button className="btn" disabled={loading} onClick={async () => {
+            setLoading(true)
             try {
               const res = await api.advanceHour();
               if (res && res.current_date) {
@@ -212,9 +214,9 @@ export default function AdminDashboard() {
               // Also trigger a global event so the top bar updates immediately
               window.dispatchEvent(new Event('simulation-reset'));
               await load();
-            } catch (e) { alert(e.message) }
+            } catch (e) { alert(e.message) } finally { setLoading(false) }
           }}>
-            Progress Hour
+            {loading ? '...' : 'Progress Hour'}
           </button>
 
           <div style={{ flex: 1 }}></div>

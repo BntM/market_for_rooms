@@ -5,7 +5,7 @@ from sqlalchemy import select, insert, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AdminConfig, Resource, TimeSlot, Auction, TimeSlotStatus, AuctionStatus
 
-async def recalculate_prices(db: AsyncSession, start_date: datetime, days: int = 120):
+async def recalculate_prices(db: AsyncSession, start_date: datetime, days: int = 7):
     # 1. Get Config & Weightings
     config_res = await db.execute(select(AdminConfig).where(AdminConfig.id == 1))
     config = config_res.scalar_one_or_none()
