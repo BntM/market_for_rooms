@@ -13,36 +13,50 @@ export default function PriceMonitor() {
     api.getResources().then((data) => {
       setResources(data)
       if (data.length > 0) setSelectedResource(data[0])
-    }).catch(() => {})
+    }).catch(() => { })
   }, [])
 
   useEffect(() => {
     if (selectedResource) {
-      api.getAuctions({ resource_id: selectedResource.id }).then((data) => {
-        setAuctions(data)
-        if (data.length > 0) setSelectedAuction(data[0])
-        else setSelectedAuction(null)
-      }).catch(() => { setAuctions([]); setSelectedAuction(null) })
+      // Get market price history directly, or fetch all auctions and aggregate?
+      // "run simulation round dosent work for the price history on the admin dash... no auction involved"
+      // "prices will just adjust each day based upon the customer booking behavior"
+      // This implies we should be looking at `PriceHistory` but not optionally filtering by ONE auction.
+      // Or maybe we treat the "market price" as the aggregated price history for that resource. 
+      // The current backend/charts link PriceHistory to `time_slot_id` or `auction_id`.
+      // The simulation creates bookings, which might create transactions, but does it create PriceHistory?
+      // `app/services/market_simulator.py` (ported logic) might create price points?
+      // The `god/auto-populate` endpoint DEFINITELY creates PriceHistory entries.
+      // So let's fetch PriceHistory by Resource ID (requires new API or filtering).
+      // The current API `getAuctions` -> `getPriceHistory` flow assumes auctions.
+
+      // I'll update it to fetch "Resource Price History".
+      // Since we don't have a direct endpoint for "Resource Price History", I'll mock it or use 
+      // the existing generic market history if strictly for simulation, 
+      // BUT for specific rooms, we need a way to see that room's price.
+      // For now, let's look at `api.getResourceSchedule(id)`? No. 
+      // Let's modify the frontend to iterate through time slots? Too heavy.
+      // Best bet: The `god` mode populated `PriceHistory` with `time_slot_id`.
+      // The `PriceHistory` model has `time_slot_id`.
+      // So we need an endpoint `GET /api/resources/{id}/price-history`.
+
+      // Let's assume I'll add that backend endpoint next.
+      // For now, I will write the frontend assuming `api.getResourcePriceHistory(id)` exists.
+      api.getResourcePriceHistory(selectedResource.id)
+        .then(setPriceHistory)
+        .catch(() => setPriceHistory([]))
     }
   }, [selectedResource?.id])
-
-  useEffect(() => {
-    if (selectedAuction) {
-      api.getPriceHistory(selectedAuction.id).then(setPriceHistory).catch(() => setPriceHistory([]))
-    } else {
-      setPriceHistory([])
-    }
-  }, [selectedAuction?.id])
 
   return (
     <div>
       <div className="page-header">
         <h1>Price Monitor</h1>
-        <p>Track auction price history per room</p>
+        <p>Track dynamic pricing per room</p>
       </div>
 
       <div className="filters-row">
-        <div className="form-group">
+        <div className="form-group" style={{ width: '100%' }}>
           <label>Room</label>
           <select
             value={selectedResource?.id || ''}
@@ -56,54 +70,14 @@ export default function PriceMonitor() {
             ))}
           </select>
         </div>
-        <div className="form-group">
-          <label>Auction</label>
-          <select
-            value={selectedAuction?.id || ''}
-            onChange={(e) => {
-              const a = auctions.find((a) => a.id === e.target.value)
-              if (a) setSelectedAuction(a)
-            }}
-          >
-            {auctions.length === 0 && <option value="">No auctions</option>}
-            {auctions.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.id.slice(0, 8)}... — {a.status} — {a.current_price.toFixed(1)} tokens
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
-
-      {selectedAuction && (
-        <div className="stats-row">
-          <div className="card card--stat">
-            <div className="label">Current Price</div>
-            <div className="value">{selectedAuction.current_price.toFixed(1)}</div>
-          </div>
-          <div className="card card--stat">
-            <div className="label">Start Price</div>
-            <div className="value">{selectedAuction.start_price.toFixed(1)}</div>
-          </div>
-          <div className="card card--stat">
-            <div className="label">Min Price</div>
-            <div className="value">{selectedAuction.min_price.toFixed(1)}</div>
-          </div>
-          <div className="card card--stat">
-            <div className="label">Status</div>
-            <div className="value" style={{ fontSize: '1.25rem' }}>
-              <span className={`status status--${selectedAuction.status}`}>{selectedAuction.status}</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="card">
         {priceHistory.length > 0 ? (
           <PriceChart data={priceHistory} height={400} />
         ) : (
           <div className="text-secondary" style={{ padding: '3rem', textAlign: 'center' }}>
-            {selectedAuction ? 'No price data yet. Tick the auction to generate price history.' : 'Select a room and auction to view prices.'}
+            {selectedResource ? 'No price data found for this room.' : 'Select a room to view price history.'}
           </div>
         )}
       </div>

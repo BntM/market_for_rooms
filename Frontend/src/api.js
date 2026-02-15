@@ -1,14 +1,24 @@
 const BASE = '/api';
 
 async function request(path, options = {}) {
+  const headers = { ...options.headers };
+  // Only add JSON content type if it's not FormData and not already set
+  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
+    headers,
   });
+
   if (res.status === 204) return null;
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Request failed');
+    const message = typeof err.detail === 'string'
+      ? err.detail
+      : JSON.stringify(err.detail) || 'Request failed';
+    throw new Error(message);
   }
   return res.json();
 }
@@ -19,6 +29,7 @@ const api = {
   createResource: (data) => request('/resources/', { method: 'POST', body: JSON.stringify(data) }),
   updateResource: (id, data) => request(`/resources/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteResource: (id) => request(`/resources/${id}`, { method: 'DELETE' }),
+  deleteAllResources: () => request('/resources/', { method: 'DELETE' }),
   generateTimeSlots: (id, data) => request(`/resources/${id}/timeslots/generate`, { method: 'POST', body: JSON.stringify(data) }),
   getTimeSlots: (id, status) => request(`/resources/${id}/timeslots${status ? `?status=${status}` : ''}`),
 
@@ -50,6 +61,7 @@ const api = {
   getMarketState: () => request('/market/state'),
   getMarketPriceHistory: (limit = 100) => request(`/market/price-history?limit=${limit}`),
   getResourceSchedule: (id) => request(`/market/resources/${id}/schedule`),
+  getResourcePriceHistory: (id) => request(`/resources/${id}/price-history`),
 
   // Admin
   getConfig: () => request('/admin/config'),
@@ -60,6 +72,17 @@ const api = {
   allocateTokens: () => request('/simulation/allocate-tokens', { method: 'POST' }),
   resetSimulation: () => request('/simulation/reset', { method: 'POST' }),
   getSimulationResults: () => request('/simulation/results'),
+
+  // History & Analysis
+  analyzeHistory: (formData) => request('/history/analyze', { method: 'POST', body: formData }), // let browser set content-type for multipart
+  runMarketSimulation: (config) => request('/history/simulate', { method: 'POST', body: JSON.stringify(config) }),
+  optimizePrice: (config) => request('/history/optimize', { method: 'POST', body: JSON.stringify(config) }),
+
+  // Admin Resources
+  importResources: (formData) => request('/admin/import-resources', { method: 'POST', body: formData }),
+
+  // God Mode (ML Models)
+  autoPopulateMarket: (data) => request('/god/auto-populate', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export default api;

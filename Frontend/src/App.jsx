@@ -7,6 +7,9 @@ import AdminDashboard from './admin/AdminDashboard'
 import RoomManager from './admin/RoomManager'
 import AuctionConfig from './admin/AuctionConfig'
 import PriceMonitor from './admin/PriceMonitor'
+import HistoricalAnalysis from './admin/HistoricalAnalysis'
+import MarketSimulator from './admin/MarketSimulator'
+import GodTools from './god/GodTools'
 
 export default function App() {
   return (
@@ -20,6 +23,9 @@ export default function App() {
         <Route path="/admin/rooms" element={<RoomManager />} />
         <Route path="/admin/config" element={<AuctionConfig />} />
         <Route path="/admin/prices" element={<PriceMonitor />} />
+        <Route path="/admin/analysis" element={<HistoricalAnalysis />} />
+        <Route path="/admin/simulator" element={<MarketSimulator />} />
+        <Route path="/god" element={<GodTools />} />
       </Route>
     </Routes>
   )

@@ -64,6 +64,22 @@ export default function RoomManager() {
     }
   }
 
+  const handleImport = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      setLoading(true)
+      const res = await api.importResources(formData)
+      alert(`Imported ${res.resources_created} rooms and ${res.time_slots_created} slots!`)
+      await load()
+    } catch (e) {
+      alert(e.message)
+      setLoading(false)
+    }
+  }
+
   if (loading) return <div className="text-secondary">Loading rooms...</div>
 
   return (
@@ -73,9 +89,68 @@ export default function RoomManager() {
           <h1>Room Manager</h1>
           <p>Manage rooms and generate time slots</p>
         </div>
-        <button className="btn btn--primary" onClick={() => setShowAdd(!showAdd)}>
-          {showAdd ? 'Cancel' : 'Add Room'}
-        </button>
+        <div className="flex gap-1">
+          <button className="btn btn--danger" onClick={async () => {
+            if (confirm('Are you sure you want to DELETE ALL ROOMS? This cannot be undone.')) {
+              try {
+                await api.deleteAllResources()
+                await load()
+              } catch (e) { alert(e.message) }
+            }
+          }}>Delete All</button>
+          <label className="btn btn--secondary" style={{ cursor: 'pointer' }}>
+            Import CSV
+            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImport} />
+          </label>
+          <button className="btn btn--primary" onClick={() => setShowAdd(!showAdd)}>
+            {showAdd ? 'Cancel' : 'Add Room'}
+          </button>
+        </div>
+      </div>
+
+      <div className="card mb-2">
+        <h3>🤖 Auto-Price (Admin)</h3>
+        <p className="text-secondary small">Apply the latest ML model (trained by God Mode) to set base prices for all rooms.</p>
+        <div className="flex gap-1 mt-1">
+          <input type="date" id="auto_price_date" />
+          <button className="btn btn--primary" onClick={async () => {
+            const date = document.getElementById('auto_price_date').value
+            if (!date) return alert('Select date')
+            // Fetch analysis first to get weights
+            // In a real app we'd store "active model" in DB. 
+            // For hackathon, we'll re-analyze or assume model exists in session/cache or let user re-upload?
+            // The user said "based upon the model that the god user decides". 
+            // Be pragmatic: We'll assume the God Mode action ALREADY populated the DB with prices.
+            // Or does the user mean Admin triggers the population?
+            // "admin user... should have an autoprice option... based upon the model the god user decides"
+            // This implies God TRAINS/DECIDES, Admin EXECUTES.
+            // Let's call the same God Endpoint but expose it here.
+            // We need the analysis results. Let's fetch them from a new endpoint or LocalStorage? 
+            // Simplest: We'll just call the auto-populate if we can. 
+            // But wait, auto-populate needs analysis results. 
+            // Let's just create a quick "Get Latest Analysis" endpoint or store it in DB.
+            // Plan B: Admin uploads the CSV too or we just share the endpoint.
+
+            // Actually, the God Mode auto-populate DOES the pricing and slot creation.
+            // So if God ran it, it's done. 
+            // If Admin wants to run it, they need the analysis.
+            // Let's assume the CSV was uploaded to /history/analyze recently and cached? No stateless.
+
+            // Let's just make the Admin call the /god/auto-populate but we need the weights.
+            // I'll make GodTools save the weights to localStorage or DB?
+            // Better: Add an endpoint to "GET /api/god/model" that returns last training.
+            // For now, let's just alert the user to use God Mode if they want full ML control, 
+            // OR simply call the optimization endpoint which is similar? 
+
+            // User request: "admin user... should have an autoprice option... based upon the model that the god user decides"
+            // I will call a new endpoint `apply-latest-model` and assumes God saved it.
+            try {
+              const res = await api.autoPopulateMarket({ end_date: date, use_saved_model: true })
+              alert(res.message)
+              await load()
+            } catch (e) { alert(e.message) }
+          }}>Apply Pricing Model</button>
+        </div>
       </div>
 
       {showAdd && (

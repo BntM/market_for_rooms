@@ -77,6 +77,16 @@ async def delete_resource(resource_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
 
+@router.delete("/", status_code=204)
+async def delete_all_resources(db: AsyncSession = Depends(get_db)):
+    """Delete all resources and associated data."""
+    # Cascades should handle TimeSlots, but explicit delete is safer
+    from sqlalchemy import delete
+    # Order matters for foreign keys if no cascade, but model has cascade="all, delete-orphan"
+    await db.execute(delete(Resource))
+    await db.commit()
+
+
 @router.post(
     "/{resource_id}/timeslots/generate",
     response_model=list[TimeSlotResponse],
@@ -126,5 +136,24 @@ async def list_time_slots(
     if status:
         query = query.where(TimeSlot.status == status)
     query = query.order_by(TimeSlot.start_time)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@router.get("/{resource_id}/price-history")
+async def get_resource_price_history(
+    resource_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get aggregated price history for a resource's time slots."""
+    from app.models import PriceHistory
+    
+    # Join PriceHistory with TimeSlot to filter by resource_id
+    query = (
+        select(PriceHistory)
+        .join(TimeSlot, PriceHistory.time_slot_id == TimeSlot.id)
+        .where(TimeSlot.resource_id == resource_id)
+        .order_by(PriceHistory.created_at)
+    )
     result = await db.execute(query)
     return result.scalars().all()

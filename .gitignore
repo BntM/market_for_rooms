@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+Backend/.venv/
+Backend/instance/
+Backend/.pytest_cache/
+*.db
+*.sqlite3
+
+# Node / React
+node_modules/
+Frontend/node_modules/
+dist/
+Frontend/dist/
+.DS_Store
+*.local
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+
+# Custom artifacts
+verify_*.py
+gmu_room_data.csv
