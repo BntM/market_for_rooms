@@ -31,8 +31,21 @@ const PatriotAIChat = () => {
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [agents, setAgents] = useState([]);
+    const [selectedAgent, setSelectedAgent] = useState('');
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    // Fetch agents on mount
+    useEffect(() => {
+        fetch('http://localhost:8000/api/agents/')
+            .then(r => r.json())
+            .then(data => {
+                setAgents(data || []);
+                if (data?.length > 0) setSelectedAgent(data[0].id);
+            })
+            .catch(() => { });
+    }, []);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -95,7 +108,7 @@ const PatriotAIChat = () => {
             const response = await fetch('http://localhost:8000/api/student/create-exam-orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ agent_id: 'User_1', exams, max_price: parseFloat(maxPrice), strategy: '3_days_before' }),
+                body: JSON.stringify({ agent_id: selectedAgent, exams, max_price: parseFloat(maxPrice), strategy: '3_days_before' }),
             });
             if (response.ok) {
                 const data = await response.json();
@@ -172,14 +185,25 @@ const PatriotAIChat = () => {
                     <div style={{ flex: 1, padding: '10px 0', textAlign: 'center', fontSize: 12, fontWeight: 500, cursor: 'pointer', opacity: .5 }}>ARCHIVED</div>
                 </div>
 
-                {/* User */}
-                <div style={{ padding: '12px 16px', borderTop: `1px solid ${COLORS.sidebarHover}`, background: 'rgba(0,0,0,.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                        width: 32, height: 32, borderRadius: '50%', background: COLORS.gold,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: COLORS.sidebarBg, fontWeight: 700, fontSize: 13,
-                    }}>J</div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>Joseph Henry DeRoma</div>
+                {/* Agent Selector */}
+                <div style={{ padding: '12px 16px', borderTop: `1px solid ${COLORS.sidebarHover}`, background: 'rgba(0,0,0,.1)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>Acting As</div>
+                    <select
+                        value={selectedAgent}
+                        onChange={(e) => setSelectedAgent(e.target.value)}
+                        style={{
+                            width: '100%', padding: '8px 10px', borderRadius: 6,
+                            background: 'rgba(255,255,255,.12)', color: COLORS.white,
+                            border: '1px solid rgba(255,255,255,.2)', fontSize: 13,
+                            fontWeight: 500, cursor: 'pointer', outline: 'none',
+                        }}
+                    >
+                        {agents.map(a => (
+                            <option key={a.id} value={a.id} style={{ color: '#000' }}>
+                                {a.name} ({a.token_balance?.toFixed(0)} tokens)
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
 

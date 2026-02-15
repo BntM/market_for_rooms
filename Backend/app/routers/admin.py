@@ -16,29 +16,38 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 @router.post("/market-analysis")
 async def get_market_analysis_report(db: AsyncSession = Depends(get_db)):
-    # 1. Gather Market Data (Mocking a bit for speed, but using real DB counts)
-    total_orders_res = await db.execute(select(text("COUNT(*) FROM bookings")))
-    total_orders = total_orders_res.scalar()
-    
-    avg_price_res = await db.execute(select(text("AVG(price_paid) FROM bookings")))
-    avg_price = avg_price_res.scalar() or 0.0
-    
-    # Simple revenue calc for last 24h (mock window for now)
-    revenue = float(total_orders) * float(avg_price) 
-    
-    market_data = {
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "total_orders": total_orders,
-        "avg_price": round(avg_price, 2),
-        "revenue_24h": round(revenue, 2),
-        "popular_time": "2:00 PM - 4:00 PM (Simulated)", # Could query time_popularity from config
-        "quiet_time": "8:00 AM - 10:00 AM (Simulated)"
-    }
-    
-    # 2. Call Gemini
-    report = await gemini_client.generate_admin_market_report(market_data)
-    
-    return {"report": report, "data": market_data}
+    try:
+        # 1. Gather Market Data from real DB
+        total_orders_res = await db.execute(text("SELECT COUNT(*) FROM bookings"))
+        total_orders = total_orders_res.scalar() or 0
+        
+        avg_price_res = await db.execute(text("SELECT AVG(price_paid) FROM bookings"))
+        avg_price = avg_price_res.scalar() or 0.0
+        
+        active_auctions_res = await db.execute(text("SELECT COUNT(*) FROM auctions WHERE status = 'active'"))
+        active_auctions = active_auctions_res.scalar() or 0
+        
+        # Revenue calc
+        revenue = float(total_orders) * float(avg_price)
+        
+        market_data = {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "total_orders": total_orders,
+            "active_auctions": active_auctions,
+            "avg_price": round(float(avg_price), 2),
+            "revenue_24h": round(revenue, 2),
+            "popular_time": "2:00 PM - 4:00 PM (Simulated)",
+            "quiet_time": "8:00 AM - 10:00 AM (Simulated)"
+        }
+        
+        # 2. Call Gemini
+        report = await gemini_client.generate_admin_market_report(market_data)
+        
+        return {"report": report, "data": market_data}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"report": f"Error generating report: {str(e)}", "data": {}}
 
 
 async def _get_or_create_config(db: AsyncSession) -> AdminConfig:

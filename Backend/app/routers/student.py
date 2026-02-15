@@ -43,13 +43,8 @@ async def parse_syllabus(file: UploadFile = File(...)):
 @router.post("/create-exam-orders")
 async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
     """
-    Accepts: {
-        "agent_id": str,
-        "exams": [{"name": str, "date": "YYYY-MM-DD"}],
-        "max_price": float,
-        "strategy": "3_days_before"
-    }
-    Creates limit orders for 3 days prior to each exam.
+    Creates real limit orders on active auctions.
+    Picks the nearest available auctions to the requested study dates.
     """
     agent_id = payload.get("agent_id")
     exams = payload.get("exams", [])
@@ -57,58 +52,61 @@ async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
     
     # Validate agent
     agent = await db.scalar(select(Agent).where(Agent.id == agent_id))
-    # If no agent ID provided, maybe use the first simulated user as 'me' for demo
     if not agent:
-         agent = await db.scalar(select(Agent).where(Agent.name == "User_1"))
-         if not agent:
-             raise HTTPException(status_code=404, detail="Agent not found")
-         agent_id = agent.id
+        agent = await db.scalar(select(Agent).where(Agent.name == agent_id))
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
+    agent_id = agent.id
+
+    # Check balance
+    if agent.token_balance < max_price:
+        raise HTTPException(status_code=400, detail="Insufficient token balance")
 
     orders_created = 0
+    
+    # Get all ACTIVE auctions with their time slots
+    from app.models import Auction, AuctionStatus
+    auc_res = await db.execute(
+        select(Auction, TimeSlot)
+        .join(TimeSlot, Auction.time_slot_id == TimeSlot.id)
+        .where(Auction.status == AuctionStatus.ACTIVE)
+        .order_by(TimeSlot.start_time)
+    )
+    active_auctions = auc_res.all()
+    
+    if not active_auctions:
+        return {"orders_count": 0, "message": "No active auctions available to place orders on."}
+    
+    # For each exam, find the best study slots (3 days before, evening preferred)
+    used_auction_ids = set()
     
     for exam in exams:
         exam_date_str = exam.get("date")
         try:
-             exam_date = datetime.strptime(exam_date_str, "%Y-%m-%d")
+            exam_date = datetime.strptime(exam_date_str, "%Y-%m-%d")
         except:
             continue
-            
-        # Strategy: 3 days before
-        # T-1, T-2, T-3
+        
+        # Target study window: 3 days before exam
         target_dates = [exam_date - timedelta(days=i) for i in range(1, 4)]
         
-        for date in target_dates:
-            # Find slots on this day
-            # Filter by time preference? Let's say evening study (18:00 - 22:00)
-            # Fetch slots
-            start_of_day = date.replace(hour=0, minute=0, second=0)
-            end_of_day = date.replace(hour=23, minute=59, second=59)
-            
-            res = await db.execute(
-                select(TimeSlot)
-                .where(
-                    and_(
-                        TimeSlot.start_time >= start_of_day,
-                        TimeSlot.start_time <= end_of_day,
-                        TimeSlot.status.in_([TimeSlotStatus.AVAILABLE, "in_auction"])
-                    )
-                )
-            )
-            slots = res.scalars().all()
-            
-            # Smart filter: Evening hours (18-22)
-            filtered_slots = []
-            for s in slots:
-                if 18 <= s.start_time.hour <= 22:
-                    filtered_slots.append(s)
-            
-            # If no evening slots, take any
-            if not filtered_slots:
-                filtered_slots = slots
-                
-            # Create Limit Order for top 2 slots per day? Or all?
-            # Let's do top 3 to avoid spamming too much
-            for slot in filtered_slots[:3]:
+        # Score each auction by how close it is to a target study date + time preference
+        scored = []
+        for auction, slot in active_auctions:
+            if auction.id in used_auction_ids:
+                continue
+            # Date distance (lower is better)
+            best_dist = min(abs((slot.start_time.date() - td.date()).days) for td in target_dates)
+            # Evening bonus (18:00+ is preferred study time)
+            time_bonus = 0 if 14 <= slot.start_time.hour <= 22 else 5
+            score = best_dist + time_bonus
+            scored.append((score, auction, slot))
+        
+        scored.sort(key=lambda x: x[0])
+        
+        # Take best 3 per exam
+        for score, auction, slot in scored[:3]:
+            if auction.current_price <= max_price:
                 order = LimitOrder(
                     id=str(uuid.uuid4()),
                     agent_id=agent_id,
@@ -117,6 +115,7 @@ async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
                     status=LimitOrderStatus.PENDING
                 )
                 db.add(order)
+                used_auction_ids.add(auction.id)
                 orders_created += 1
     
     await db.commit()
