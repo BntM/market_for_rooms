@@ -18,14 +18,14 @@ class PZSimConfig(BaseModel):
     num_agents: int = 30
     num_rooms: int = 5
     slots_per_room_per_day: int = 3
-    max_days: int = 14
+    max_days: int = 28
 
     auction_start_price: float = 100.0
     auction_min_price: float = 10.0
     auction_price_step: float = 5.0
     max_ticks: int = 20
 
-    high_demand_days: List[List[int]] = Field(default_factory=lambda: [[10, 14]])
+    high_demand_days: List[List[int]] = Field(default_factory=lambda: [[20, 28]])
 
     # For single sim
     token_amount: float = 100.0
@@ -38,9 +38,9 @@ class PZSimConfig(BaseModel):
 class PZGridSearchRequest(BaseModel):
     """Request body for grid search."""
     config: PZSimConfig = Field(default_factory=PZSimConfig)
-    token_amounts: List[float] = Field(default_factory=lambda: [50.0, 75.0, 100.0, 125.0, 150.0, 200.0])
-    token_frequencies: List[int] = Field(default_factory=lambda: [3, 5, 7, 10, 14])
-    num_seeds: int = 3
+    token_amounts: List[float] = Field(default_factory=lambda: [25.0, 50.0, 75.0, 100.0, 125.0, 150.0, 200.0, 300.0])
+    token_frequencies: List[int] = Field(default_factory=lambda: [1, 2, 3, 5, 7, 10, 14])
+    num_seeds: int = 5
 
 
 class PZMetricsResponse(BaseModel):

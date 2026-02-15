@@ -28,18 +28,18 @@ export default function PettingZooSimulator() {
     // Config state
     const [numAgents, setNumAgents] = useState(30)
     const [numRooms, setNumRooms] = useState(5)
-    const [maxDays, setMaxDays] = useState(14)
+    const [maxDays, setMaxDays] = useState(28)
     const [startPrice, setStartPrice] = useState(100)
     const [minPrice, setMinPrice] = useState(10)
     const [priceStep, setPriceStep] = useState(5)
     const [maxTicks, setMaxTicks] = useState(20)
-    const [hdStart, setHdStart] = useState(10)
-    const [hdEnd, setHdEnd] = useState(14)
-    const [numSeeds, setNumSeeds] = useState(3)
+    const [hdStart, setHdStart] = useState(20)
+    const [hdEnd, setHdEnd] = useState(28)
+    const [numSeeds, setNumSeeds] = useState(5)
 
     // Grid search ranges
-    const [amountsStr, setAmountsStr] = useState('50, 75, 100, 125, 150, 200')
-    const [freqsStr, setFreqsStr] = useState('3, 5, 7, 10, 14')
+    const [amountsStr, setAmountsStr] = useState('25, 50, 75, 100, 125, 150, 200, 300')
+    const [freqsStr, setFreqsStr] = useState('1, 2, 3, 5, 7, 10, 14')
 
     // Job state
     const [jobId, setJobId] = useState(null)
@@ -209,22 +209,34 @@ export default function PettingZooSimulator() {
         }
     }
 
-    // Chart: heatmap as a grouped bar (stability scores by amount, grouped by frequency)
+    // Chart: stability scores grouped by token amount, one bar group per frequency
     const getHeatmapChart = () => {
         if (!result?.heatmap) return null
         const { amounts, frequencies, scores } = result.heatmap
-        const colors = ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40']
+        const colors = ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40', '#e7725b', '#7cb5ec']
         return {
             labels: amounts.map(a => `${a} tokens`),
             datasets: frequencies.map((freq, fi) => ({
-                label: `Every ${freq} days`,
+                label: `Every ${freq}d`,
                 data: scores[fi] || [],
                 backgroundColor: colors[fi % colors.length],
             })),
         }
     }
 
-    // Chart: daily utilization + avg price for best config
+    const heatmapOpts = {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' },
+            title: { display: true, text: 'Lower score = more stable market' },
+        },
+        scales: {
+            x: { title: { display: true, text: 'Token Amount per Allocation' } },
+            y: { title: { display: true, text: 'Stability Score (lower = better)' } },
+        },
+    }
+
+    // Chart: daily utilization + avg clearing price for best (or single) config
     const getDailyChart = () => {
         const daily = result?.best_daily || singleResult?.daily_detail
         if (!daily) return null
@@ -233,7 +245,7 @@ export default function PettingZooSimulator() {
             labels: days.map(d => `Day ${d}`),
             datasets: [
                 {
-                    label: 'Utilization',
+                    label: 'Room Utilization (% slots booked)',
                     data: days.map(d => daily.utilization[d] || 0),
                     borderColor: '#4bc0c0',
                     backgroundColor: '#4bc0c0',
@@ -241,7 +253,7 @@ export default function PettingZooSimulator() {
                     tension: 0.3,
                 },
                 {
-                    label: 'Avg Price',
+                    label: 'Avg Clearing Price (tokens)',
                     data: days.map(d => daily.avg_price[d] || 0),
                     borderColor: '#ff6384',
                     backgroundColor: '#ff6384',
@@ -252,25 +264,25 @@ export default function PettingZooSimulator() {
         }
     }
 
-    // Chart: top 5 allocations comparison
+    // Chart: top 5 allocations side-by-side comparison
     const getTop5Chart = () => {
         if (!result?.all_results?.length) return null
         const top5 = result.all_results.slice(0, 5)
         return {
-            labels: top5.map(r => `${r.token_amount}t / ${r.token_frequency}d`),
+            labels: top5.map(r => `${r.token_amount} tokens / ${r.token_frequency}d`),
             datasets: [
                 {
-                    label: 'Stability Score',
+                    label: 'Stability Score (lower = better)',
                     data: top5.map(r => r.stability_score),
                     backgroundColor: '#36a2eb',
                 },
                 {
-                    label: 'Utilization',
+                    label: 'Utilization Rate (0-1)',
                     data: top5.map(r => r.utilization_rate),
                     backgroundColor: '#4bc0c0',
                 },
                 {
-                    label: 'Unmet Demand',
+                    label: 'Unmet Demand (0-1)',
                     data: top5.map(r => r.unmet_demand),
                     backgroundColor: '#ff6384',
                 },
@@ -278,12 +290,26 @@ export default function PettingZooSimulator() {
         }
     }
 
+    const top5Opts = {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' },
+        },
+        scales: {
+            x: { title: { display: true, text: 'Token Allocation (amount / frequency)' } },
+            y: { title: { display: true, text: 'Score / Rate' } },
+        },
+    }
+
     const dualAxisOpts = {
         responsive: true,
         interaction: { mode: 'index', intersect: false },
+        plugins: {
+            title: { display: true, text: result?.best ? 'Best configuration (single seed)' : 'Single simulation run' },
+        },
         scales: {
-            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Utilization' } },
-            y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Avg Price' }, grid: { drawOnChartArea: false } },
+            y: { type: 'linear', display: true, position: 'left', min: 0, max: 1, title: { display: true, text: 'Utilization (0 = empty, 1 = full)' } },
+            y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Avg Clearing Price (tokens)' }, grid: { drawOnChartArea: false } },
         },
     }
 
@@ -536,22 +562,34 @@ export default function PettingZooSimulator() {
             <div className="grid">
                 {getHeatmapChart() && (
                     <div className="card">
-                        <h3>Stability by Allocation (Amount x Frequency)</h3>
-                        <Bar data={getHeatmapChart()} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} />
+                        <h3>Stability Score by Token Amount & Frequency</h3>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0 0 0.5rem' }}>
+                            Each group shows how different distribution frequencies perform for a given token amount. Averaged over {numSeeds} seeds.
+                        </p>
+                        <Bar data={getHeatmapChart()} options={heatmapOpts} />
                     </div>
                 )}
 
                 {getDailyChart() && (
                     <div className="card">
-                        <h3>Daily Utilization & Avg Price</h3>
+                        <h3>Daily Room Utilization & Clearing Price</h3>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0 0 0.5rem' }}>
+                            {result?.best
+                                ? `Best config: ${result.best.token_amount} tokens every ${result.best.token_frequency} days (single seed run)`
+                                : `${singleAmount} tokens every ${singleFreq} days`
+                            }
+                        </p>
                         <Line data={getDailyChart()} options={dualAxisOpts} />
                     </div>
                 )}
 
                 {getTop5Chart() && (
                     <div className="card" style={{ gridColumn: '1 / -1' }}>
-                        <h3>Top 5 Allocations Comparison</h3>
-                        <Bar data={getTop5Chart()} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} />
+                        <h3>Top 5 Token Allocations Compared</h3>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0 0 0.5rem' }}>
+                            Ranked by stability score. Lower stability + higher utilization + lower unmet demand = better.
+                        </p>
+                        <Bar data={getTop5Chart()} options={top5Opts} />
                     </div>
                 )}
             </div>
