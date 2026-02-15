@@ -45,3 +45,11 @@ AggregateError [ECONNREFUSED]:
 [2m12:36:53 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/AdminDashboard.jsx[22m
 [2m12:37:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/AdminDashboard.jsx[22m
 [2m12:38:00 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/AdminDashboard.jsx[22m
+12:59:48 PM [vite] http proxy error: /api/admin/config
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+[2m1:00:31 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/AdminDashboard.jsx[22m
+[2m1:01:01 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/user/RoomTimeGrid.jsx[22m
+[2m1:01:08 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/AdminDashboard.jsx[22m
+[2m1:01:20 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/user/Marketplace.jsx[22m
+[2m1:01:29 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/user/SlotDetail.jsx[22m
