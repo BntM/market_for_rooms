@@ -167,7 +167,7 @@ async def import_resources(file: UploadFile = File(...), db: AsyncSession = Depe
                         min_price=computed_price * 0.5,
                         current_price=computed_price,
                         status=AuctionStatus.ACTIVE,
-                        type="dutch"
+                        auction_type="dutch"
                     )
                     db.add(auction)
                     # Mark slot as in auction
