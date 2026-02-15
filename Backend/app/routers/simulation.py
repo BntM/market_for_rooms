@@ -85,6 +85,8 @@ async def advance_day(db: AsyncSession = Depends(get_db)):
     if not config:
         config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 14, 9, 0))
         db.add(config)
+    elif config.current_simulation_date is None:
+        config.current_simulation_date = datetime(2026, 2, 14, 9, 0)
     
     config.current_simulation_date += timedelta(days=1)
     new_date = config.current_simulation_date
@@ -104,6 +106,8 @@ async def advance_hour(db: AsyncSession = Depends(get_db)):
     if not config:
         config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 14, 9, 0))
         db.add(config)
+    elif config.current_simulation_date is None:
+        config.current_simulation_date = datetime(2026, 2, 14, 9, 0)
     
     config.current_simulation_date += timedelta(hours=1)
     new_date = config.current_simulation_date
@@ -121,8 +125,11 @@ async def reset_time(db: AsyncSession = Depends(get_db)):
     config = res.scalar_one_or_none()
     if config:
         config.current_simulation_date = datetime(2026, 2, 14, 9, 0)
-        await db.commit()
+    else:
+        config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 14, 9, 0))
+        db.add(config)
     
+    await db.commit()
     return {"current_date": "2026-02-14T09:00:00", "message": "Time reset"}
 
 
