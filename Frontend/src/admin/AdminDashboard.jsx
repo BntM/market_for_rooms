@@ -216,12 +216,16 @@ const SimulationSection = () => {
 export default function AdminDashboard() {
   const [resources, setResources] = useState([])
   const [auctions, setAuctions] = useState([])
+  const [agents, setAgents] = useState([])
+  const [selectedAgent, setSelectedAgent] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
+  const [selectedSlots, setSelectedSlots] = useState([])
   const [location, setLocation] = useState('')
   const [loading, setLoading] = useState(true)
   const [viewDate, setViewDate] = useState(null)
   const [simDate, setSimDate] = useState(null)
   const [error, setError] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Initialize viewDate from simulation time
   useEffect(() => {
@@ -249,12 +253,18 @@ export default function AdminDashboard() {
       const end = new Date(viewDate)
       end.setHours(23, 59, 59, 999)
 
-      const [res, auc] = await Promise.all([
+      const [res, auc, ag] = await Promise.all([
         api.getResources(),
         api.getAuctions({ start_date: start.toISOString(), end_date: end.toISOString() }),
+        api.getAgents(),
       ])
       setResources(res || [])
       setAuctions(auc || [])
+      setAgents(ag || [])
+
+      if (ag && ag.length > 0 && !selectedAgent) {
+        setSelectedAgent(ag[0])
+      }
     } catch (e) {
       console.error(e)
       setError("Failed to load schedule data.")
@@ -285,6 +295,63 @@ export default function AdminDashboard() {
   const handleReset = async () => {
     if (!confirm('Reset simulation?')) return;
     try { await api.resetSimulation(); window.dispatchEvent(new Event('simulation-reset')); await load() } catch (e) { alert(e.message) }
+  }
+
+  const handleToggleSlot = (slot) => {
+    setSelectedSlots((prev) => {
+      const exists = prev.find((s) => s.id === slot.id)
+      if (exists) return prev.filter((s) => s.id !== slot.id)
+      return [...prev, slot]
+    })
+  }
+
+  const handleBuyAll = async (slotsToBuy, splitOptions = null) => {
+    if (!selectedAgent) return
+    const items = slotsToBuy.map((slot) => {
+      const auction = auctions.find((a) => a.time_slot_id === slot.id)
+      return { slot, auction }
+    }).filter((item) => item.auction && item.auction.status === 'active')
+
+    if (items.length === 0) {
+      alert('No active auctions for selected slots.')
+      return
+    }
+
+    const total = items.reduce((sum, item) => sum + item.auction.current_price, 0)
+    const confirmed = confirm(
+      `Buy ${items.length} slot(s) for ${total.toFixed(1)} total tokens?\n\n` +
+      items.map((item) => `  • ${item.auction.current_price.toFixed(1)} tokens`).join('\n')
+    )
+    if (!confirmed) return
+
+    for (const item of items) {
+      try {
+        await api.placeBid(item.auction.id, {
+          agent_id: selectedAgent.id,
+          amount: item.auction.current_price,
+          split_with_agent_id: splitOptions?.splitWith || null,
+        })
+      } catch (e) {
+        alert(`Failed to buy slot: ${e.message}`)
+      }
+    }
+    await load()
+    setRefreshKey((k) => k + 1)
+    setSelectedSlots([])
+  }
+
+  const handleSetOrder = async (auction, maxPrice) => {
+    if (!selectedAgent) return
+    try {
+      await api.createLimitOrder(auction.id, {
+        agent_id: selectedAgent.id,
+        max_price: maxPrice,
+      })
+      alert('Limit order placed')
+      setRefreshKey((k) => k + 1)
+    } catch (e) {
+      alert(e.message)
+    }
   }
 
   const handleDateChange = (days) => {
@@ -424,22 +491,24 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <RoomTimeGrid
+          key={refreshKey}
           resources={filtered}
           auctions={auctions}
-          selectedSlots={selectedSlot ? [selectedSlot] : []}
-          onToggleSlot={(slot) => setSelectedSlot((prev) => prev && prev.id === slot.id ? null : slot)}
+          selectedSlots={selectedSlots}
+          onToggleSlot={handleToggleSlot}
           simDate={simDate}
         />
       )}
 
       <SlotDetail
-        slots={selectedSlot ? [selectedSlot] : []}
+        slots={selectedSlots}
         auctions={auctions}
-        agent={null}
-        onClose={() => setSelectedSlot(null)}
-        onRemoveSlot={() => setSelectedSlot(null)}
-        onBuyAll={() => { }}
-        onSetOrder={() => { }}
+        agent={selectedAgent}
+        onClose={() => setSelectedSlots([])}
+        onRemoveSlot={(slot) => setSelectedSlots((prev) => prev.filter((s) => s.id !== slot.id))}
+        onBuyAll={handleBuyAll}
+        onSetOrder={handleSetOrder}
+        agents={agents}
       />
     </div>
   )

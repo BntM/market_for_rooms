@@ -7,3 +7,39 @@
 
   [32mΓ₧£[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
 [2m  [32mΓ₧£[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m11:54:58 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/student/PatriotAIChat.jsx[22m
+[2m11:59:20 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/student/PatriotAIChat.jsx[22m
+[2m12:04:00 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/PettingZooSimulator.jsx[22m
+12:16:23 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+12:16:28 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+12:16:33 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+12:16:38 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+12:16:43 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+12:16:48 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+12:17:50 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+12:18:50 PM [vite] http proxy error: /api/admin/config
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+[2m12:36:53 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/admin/AdminDashboard.jsx[22m

@@ -100,6 +100,7 @@ async def create_booking_from_bid(
 
     # Mark slot as booked only when at full capacity
     if bookings:
+        await db.flush()  # Flush so the new bookings are counted
         total_bookings_result = await db.execute(
             select(func.count()).select_from(Booking).where(Booking.time_slot_id == slot.id)
         )
