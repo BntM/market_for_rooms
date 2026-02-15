@@ -116,6 +116,7 @@ export default function AuctionConfig() {
           {field('Location Weight', 'location_weight', 'number', '0.1')}
           {field('Time Weight', 'time_weight', 'number', '0.1')}
           {field('Global Modifier', 'global_price_modifier', 'number', '0.1')}
+          {field('Lead Time Sensitivity', 'lead_time_sensitivity', 'number', '0.1')}
         </div>
       </div>
 

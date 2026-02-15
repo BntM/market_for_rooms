@@ -22,3 +22,4 @@ class AdminConfig(Base):
     location_weight: Mapped[float] = mapped_column(Float, default=1.0) # Sensitivity to location
     time_weight: Mapped[float] = mapped_column(Float, default=1.0) # Sensitivity to time
     global_price_modifier: Mapped[float] = mapped_column(Float, default=1.0) # Scale curve up/down
+    lead_time_sensitivity: Mapped[float] = mapped_column(Float, default=1.0) # Price curve sensitivity (closer = ?)

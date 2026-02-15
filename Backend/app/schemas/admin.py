@@ -17,6 +17,7 @@ class AdminConfigResponse(BaseModel):
     location_weight: float | None = 1.0
     time_weight: float | None = 1.0
     global_price_modifier: float | None = 1.0
+    lead_time_sensitivity: float | None = 1.0
 
     model_config = {"from_attributes": True}
 
@@ -36,3 +37,4 @@ class AdminConfigUpdate(BaseModel):
     location_weight: float | None = None
     time_weight: float | None = None
     global_price_modifier: float | None = None
+    lead_time_sensitivity: float | None = None
