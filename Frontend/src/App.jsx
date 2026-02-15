@@ -9,6 +9,7 @@ import AuctionConfig from './admin/AuctionConfig'
 import PriceMonitor from './admin/PriceMonitor'
 import HistoricalAnalysis from './admin/HistoricalAnalysis'
 import MarketSimulator from './admin/MarketSimulator'
+import Initialization from './admin/Initialization'
 
 export default function App() {
   return (
@@ -23,7 +24,9 @@ export default function App() {
         <Route path="/admin/config" element={<AuctionConfig />} />
         <Route path="/admin/prices" element={<PriceMonitor />} />
         <Route path="/admin/analysis" element={<HistoricalAnalysis />} />
+        <Route path="/admin/analysis" element={<HistoricalAnalysis />} />
         <Route path="/admin/simulator" element={<MarketSimulator />} />
+        <Route path="/admin/init" element={<Initialization />} />
       </Route>
     </Routes>
   )

@@ -13,6 +13,7 @@ const adminNav = [
   { to: '/admin/rooms', label: 'Rooms' },
   { to: '/admin/prices', label: 'Prices' },
   { to: '/admin/config', label: 'Config' },
+  { to: '/admin/init', label: 'Initialize' },
 ]
 
 export default function Layout() {
