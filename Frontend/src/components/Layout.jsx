@@ -51,28 +51,7 @@ export default function Layout() {
           Market <span>for</span> Rooms
         </div>
 
-        {simDate && (
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#f0f0f0',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '4px',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            display: 'flex',
-            gap: '0.5rem',
-            alignItems: 'center'
-          }}>
-            <span style={{ color: '#666', fontSize: '0.8rem', textTransform: 'uppercase' }}>Current Time</span>
-            <span>
-              {simDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-              {' '}
-              {simDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        )}
+
 
         <nav className="top-bar__nav">
           {nav.map((item) => (
@@ -87,6 +66,26 @@ export default function Layout() {
           ))}
         </nav>
         <div className="top-bar__right">
+          {simDate && (
+            <div style={{
+              background: '#f0f0f0',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '4px',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              display: 'flex',
+              gap: '0.5rem',
+              alignItems: 'center',
+              marginRight: '1rem'
+            }}>
+              <span style={{ color: '#666', fontSize: '0.8rem', textTransform: 'uppercase' }}>Current:</span>
+              <span>
+                {simDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                {' '}
+                {simDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          )}
           {!isAdmin && <TokenBadge />}
           <div className="mode-toggle">
             <NavLink to="/user" className={`mode-toggle__btn${!isAdmin ? ' active' : ''}`}>
