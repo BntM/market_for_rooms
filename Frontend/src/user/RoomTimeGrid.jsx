@@ -44,8 +44,8 @@ export default function RoomTimeGrid({ resources, auctions, selectedSlots, onTog
 
   return (
     <>
-      <div style={{ overflowX: 'auto', paddingBottom: '1rem' }}>
-        <div className="room-grid" style={{ gridTemplateColumns: `160px repeat(${sortedTimes.length}, minmax(80px, 1fr))`, minWidth: '100%' }}>
+      <div className="table-wrap" style={{ paddingBottom: '1rem' }}>
+        <div className="room-grid" style={{ gridTemplateColumns: `160px repeat(${sortedTimes.length}, minmax(80px, 1fr))`, minWidth: 'max-content' }}>
           {/* Header row */}
           <div className="room-grid__header" />
           {sortedTimes.map((t) => (
