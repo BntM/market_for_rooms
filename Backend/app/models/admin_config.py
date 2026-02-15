@@ -18,3 +18,7 @@ class AdminConfig(Base):
     dutch_tick_interval_sec: Mapped[float] = mapped_column(Float, default=10.0)
     location_popularity: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     time_popularity: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    capacity_weight: Mapped[float] = mapped_column(Float, default=1.0) # Sensitivity to capacity
+    location_weight: Mapped[float] = mapped_column(Float, default=1.0) # Sensitivity to location
+    time_weight: Mapped[float] = mapped_column(Float, default=1.0) # Sensitivity to time
+    global_price_modifier: Mapped[float] = mapped_column(Float, default=1.0) # Scale curve up/down

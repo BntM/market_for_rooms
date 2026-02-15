@@ -13,6 +13,10 @@ class AdminConfigResponse(BaseModel):
     dutch_tick_interval_sec: float
     location_popularity: dict | None = None
     time_popularity: dict | None = None
+    capacity_weight: float | None = 1.0
+    location_weight: float | None = 1.0
+    time_weight: float | None = 1.0
+    global_price_modifier: float | None = 1.0
 
     model_config = {"from_attributes": True}
 
@@ -28,3 +32,7 @@ class AdminConfigUpdate(BaseModel):
     dutch_tick_interval_sec: float | None = None
     location_popularity: dict | None = None
     time_popularity: dict | None = None
+    capacity_weight: float | None = None
+    location_weight: float | None = None
+    time_weight: float | None = None
+    global_price_modifier: float | None = None

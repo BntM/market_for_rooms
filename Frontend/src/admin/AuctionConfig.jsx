@@ -86,7 +86,7 @@ export default function AuctionConfig() {
               onChange={(e) => {
                 try {
                   setConfig({ ...config, location_popularity: JSON.parse(e.target.value) })
-                } catch {}
+                } catch { }
               }}
               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
             />
@@ -103,11 +103,19 @@ export default function AuctionConfig() {
               onChange={(e) => {
                 try {
                   setConfig({ ...config, time_popularity: JSON.parse(e.target.value) })
-                } catch {}
+                } catch { }
               }}
               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
             />
           </div>
+        </div>
+        <div className="card">
+          <h3 style={{ marginBottom: '1rem' }}>Pricing Sensitivities</h3>
+          <p className="text-secondary small mb-1">Adjust how much each factor impacts the base price.</p>
+          {field('Capacity Weight', 'capacity_weight', 'number', '0.1')}
+          {field('Location Weight', 'location_weight', 'number', '0.1')}
+          {field('Time Weight', 'time_weight', 'number', '0.1')}
+          {field('Global Modifier', 'global_price_modifier', 'number', '0.1')}
         </div>
       </div>
 
