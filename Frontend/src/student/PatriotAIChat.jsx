@@ -357,7 +357,8 @@ const ExamConfirmationCard = ({ exams, onConfirm }) => {
                 />
             </div>
             <button
-                onClick={() => { onConfirm(exams, maxPrice); setConfirmed(true); }}
+                type="button"
+                onClick={(e) => { e.preventDefault(); onConfirm(exams, maxPrice); setConfirmed(true); }}
                 style={{
                     width: '100%', padding: '10px 0', background: '#006633', color: '#fff',
                     border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,

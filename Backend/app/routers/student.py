@@ -90,7 +90,7 @@ async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
                     and_(
                         TimeSlot.start_time >= start_of_day,
                         TimeSlot.start_time <= end_of_day,
-                        TimeSlot.status == TimeSlotStatus.AVAILABLE 
+                        TimeSlot.status.in_([TimeSlotStatus.AVAILABLE, "in_auction"])
                     )
                 )
             )
@@ -118,10 +118,12 @@ async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
                 )
                 db.add(order)
                 orders_created += 1
-                
+    
+    await db.commit()
+    return {"orders_count": orders_created, "message": f"Created {orders_created} limit orders for {len(exams)} exams"}
+
 from app.services.gemini_client import gemini_client
 from app.models.admin_config import AdminConfig
-from sqlalchemy import select
 
 @router.post("/chat")
 async def chat_with_agent(payload: dict, db: AsyncSession = Depends(get_db)):
