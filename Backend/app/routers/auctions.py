@@ -7,11 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import (
     AdminConfig,
+    Agent,
     Auction,
     AuctionStatus,
     Bid,
     BidStatus,
     GroupBidMember,
+    LimitOrder,
+    LimitOrderStatus,
     PriceHistory,
     TimeSlot,
     TimeSlotStatus,
@@ -21,6 +24,8 @@ from app.schemas.auction import (
     AuctionResponse,
     BidCreate,
     BidResponse,
+    LimitOrderCreate,
+    LimitOrderResponse,
     PriceHistoryResponse,
 )
 from app.services.auction_engine import get_auction_engine
@@ -150,3 +155,48 @@ async def get_price_history(auction_id: str, db: AsyncSession = Depends(get_db))
         .order_by(PriceHistory.recorded_at)
     )
     return result.scalars().all()
+
+
+@router.post("/{auction_id}/limit-order", response_model=LimitOrderResponse, status_code=201)
+async def create_limit_order(
+    auction_id: str,
+    data: LimitOrderCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Auction).where(Auction.id == auction_id))
+    auction = result.scalar_one_or_none()
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    if auction.status != AuctionStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail="Auction is not active")
+
+    agent_result = await db.execute(select(Agent).where(Agent.id == data.agent_id))
+    agent = agent_result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if agent.token_balance < data.max_price:
+        raise HTTPException(status_code=400, detail="Insufficient token balance for limit order")
+
+    order = LimitOrder(
+        agent_id=data.agent_id,
+        time_slot_id=auction.time_slot_id,
+        max_price=data.max_price,
+    )
+    db.add(order)
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
+@router.delete("/limit-orders/{order_id}", status_code=204)
+async def cancel_limit_order(order_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(LimitOrder).where(LimitOrder.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Limit order not found")
+    if order.status != LimitOrderStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Only pending orders can be cancelled")
+
+    order.status = LimitOrderStatus.CANCELLED
+    await db.commit()
+    return None

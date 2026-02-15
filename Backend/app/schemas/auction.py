@@ -70,3 +70,21 @@ class BookingResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class LimitOrderCreate(BaseModel):
+    agent_id: str
+    max_price: float
+
+
+class LimitOrderResponse(BaseModel):
+    id: str
+    agent_id: str
+    time_slot_id: str
+    max_price: float
+    status: str
+    created_at: datetime
+    executed_at: datetime | None = None
+    bid_id: str | None = None
+
+    model_config = {"from_attributes": True}

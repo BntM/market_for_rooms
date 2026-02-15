@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Agent, AgentPreference, Booking, Transaction
+from app.models import Agent, AgentPreference, Booking, LimitOrder, Transaction
 from app.schemas.agent import (
     AgentCreate,
     AgentPreferenceCreate,
@@ -13,7 +13,7 @@ from app.schemas.agent import (
     BulkAgentCreate,
     TransactionResponse,
 )
-from app.schemas.auction import BookingResponse
+from app.schemas.auction import BookingResponse, LimitOrderResponse
 from app.services.preference_generator import generate_preferences_for_agent
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
@@ -123,5 +123,15 @@ async def get_agent_transactions(agent_id: str, db: AsyncSession = Depends(get_d
         select(Transaction)
         .where(Transaction.agent_id == agent_id)
         .order_by(Transaction.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.get("/{agent_id}/limit-orders", response_model=list[LimitOrderResponse])
+async def get_agent_limit_orders(agent_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(LimitOrder)
+        .where(LimitOrder.agent_id == agent_id)
+        .order_by(LimitOrder.created_at.desc())
     )
     return result.scalars().all()

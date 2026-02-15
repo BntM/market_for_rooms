@@ -5,6 +5,7 @@ from app.models.transaction import Transaction
 from app.models.price_history import PriceHistory
 from app.models.booking import Booking
 from app.models.admin_config import AdminConfig
+from app.models.limit_order import LimitOrder, LimitOrderStatus
 
 __all__ = [
     "Resource",
@@ -21,4 +22,6 @@ __all__ = [
     "PriceHistory",
     "Booking",
     "AdminConfig",
+    "LimitOrder",
+    "LimitOrderStatus",
 ]

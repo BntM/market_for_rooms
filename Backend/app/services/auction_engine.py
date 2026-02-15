@@ -12,6 +12,8 @@ from app.models import (
     Bid,
     BidStatus,
     GroupBidMember,
+    LimitOrder,
+    LimitOrderStatus,
     PriceHistory,
     Transaction,
 )
@@ -63,6 +65,59 @@ class DutchAuctionEngine(AuctionEngine):
         # Record price tick
         history = PriceHistory(auction_id=auction.id, price=auction.current_price)
         db.add(history)
+
+        # Auto-execute matching limit orders
+        result = await db.execute(
+            select(LimitOrder).where(
+                LimitOrder.time_slot_id == auction.time_slot_id,
+                LimitOrder.status == LimitOrderStatus.PENDING,
+                LimitOrder.max_price >= auction.current_price,
+            ).order_by(LimitOrder.created_at)
+        )
+        matching_orders = result.scalars().all()
+
+        for order in matching_orders:
+            agent_result = await db.execute(
+                select(Agent).where(Agent.id == order.agent_id)
+            )
+            agent = agent_result.scalar_one_or_none()
+            if not agent or agent.token_balance < auction.current_price:
+                continue
+
+            bid = Bid(
+                auction_id=auction.id,
+                agent_id=order.agent_id,
+                amount=auction.current_price,
+                is_group_bid=False,
+                status=BidStatus.ACCEPTED,
+            )
+            db.add(bid)
+            await db.flush()
+
+            agent.token_balance -= auction.current_price
+            tx = Transaction(
+                agent_id=agent.id,
+                amount=-auction.current_price,
+                type="bid_payment",
+                reference_id=bid.id,
+            )
+            db.add(tx)
+
+            order.status = LimitOrderStatus.EXECUTED
+            order.executed_at = datetime.utcnow()
+            order.bid_id = bid.id
+
+            # Create booking
+            from app.services.booking_service import create_booking_from_bid
+            try:
+                await create_booking_from_bid(auction, bid, db)
+            except HTTPException:
+                # If booking fails (capacity, conflict), skip this order
+                order.status = LimitOrderStatus.PENDING
+                order.executed_at = None
+                order.bid_id = None
+                continue
+            break  # One execution per tick in Dutch auction
 
     async def place_bid(self, auction: Auction, bid_data: BidCreate, db: AsyncSession) -> Bid:
         # Validate agent
