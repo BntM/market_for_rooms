@@ -10,7 +10,7 @@ import HistoricalAnalysis from './admin/HistoricalAnalysis'
 import MarketSimulator from './admin/MarketSimulator'
 import PettingZooSimulator from './admin/PettingZooSimulator'
 import Initialization from './admin/Initialization'
-import StudentSyllabusUpload from './student/StudentSyllabusUpload'
+import PatriotAIChat from './student/PatriotAIChat'
 
 // Main App Component with Routing
 export default function App() {
@@ -21,7 +21,7 @@ export default function App() {
         <Route path="/user" element={<Marketplace />} />
         <Route path="/user/bookings" element={<MyBookings />} />
         <Route path="/user/orders" element={<MyOrders />} />
-        <Route path="/student/upload" element={<StudentSyllabusUpload />} />
+        <Route path="/student/upload" element={<PatriotAIChat />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/rooms" element={<RoomManager />} />
         <Route path="/admin/prices" element={<PriceMonitor />} />

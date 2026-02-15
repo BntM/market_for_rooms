@@ -7,7 +7,7 @@ import uuid
 from app.database import get_db
 from app.models.agent import Agent
 from app.models.limit_order import LimitOrder, LimitOrderStatus
-from app.models.simulation import TimeSlot, TimeSlotStatus, Resource
+from app.models.resource import TimeSlot, TimeSlotStatus, Resource
 from app.services.patriot_ai_client import patriot_client
 
 router = APIRouter(prefix="/api/student", tags=["student"])
@@ -119,5 +119,25 @@ async def create_exam_orders(payload: dict, db: AsyncSession = Depends(get_db)):
                 db.add(order)
                 orders_created += 1
                 
-    await db.commit()
-    return {"message": f"Created {orders_created} limit orders for {len(exams)} exams.", "orders_count": orders_created}
+@router.post("/chat")
+async def chat_with_agent(payload: dict):
+    """
+    Send a text message to Patriot AI.
+    Payload: {"message": "str", "history": []}
+    """
+    message = payload.get("message", "")
+    # For now, we are stateless / simplistic 
+    # Use the client to just get a response from the same endpoint? 
+    # The current client `parse_syllabus` is hardcoded for syllabus prompt.
+    # Let's add a generic `chat` method to client first?
+    # Or just mock for now to be safe.
+    
+    # Real logic:
+    # response = patriot_client.send_message(message)
+    
+    # Mock for "Help me find a room" which isn't implemented in the PDF parser
+    if "help" in message.lower() or "room" in message.lower():
+         return {"response": "I can help you schedule limit orders! Please upload your syllabus PDF so I can extract your exam dates."}
+    
+    return {"response": "I am the Market Room Agent. Upload a syllabus to get started!"}
+
