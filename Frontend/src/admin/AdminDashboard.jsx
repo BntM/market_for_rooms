@@ -193,7 +193,10 @@ export default function AdminDashboard() {
           <button className="btn btn--primary" onClick={async () => {
             try {
               const res = await api.advanceDay();
-              setViewDate(new Date(res.current_date));
+              if (res && res.current_date) {
+                setViewDate(new Date(res.current_date));
+              }
+              window.dispatchEvent(new Event('simulation-reset'));
               await load();
             } catch (e) { alert(e.message) }
           }}>
@@ -203,11 +206,15 @@ export default function AdminDashboard() {
           <button className="btn" onClick={async () => {
             try {
               const res = await api.advanceHour();
-              setViewDate(new Date(res.current_date));
+              if (res && res.current_date) {
+                setViewDate(new Date(res.current_date));
+              }
+              // Also trigger a global event so the top bar updates immediately
+              window.dispatchEvent(new Event('simulation-reset'));
               await load();
             } catch (e) { alert(e.message) }
           }}>
-            Change Hour
+            Progress Hour
           </button>
 
           <div style={{ flex: 1 }}></div>
