@@ -78,17 +78,17 @@ export default function Layout() {
         <div className="top-bar__right">
           {simDate && (
             <div style={{
-              background: '#f0f0f0',
+              background: 'var(--color-highlight)',
               padding: '0.25rem 0.75rem',
-              borderRadius: '4px',
-              fontSize: '0.9rem',
-              fontWeight: 600,
+              border: '1px solid var(--color-text)',
+              fontSize: '0.85rem',
+              fontWeight: 500,
               display: 'flex',
               gap: '0.5rem',
               alignItems: 'center',
-              marginRight: '1rem'
+              fontFamily: 'var(--font-mono)',
             }}>
-              <span style={{ color: '#666', fontSize: '0.8rem', textTransform: 'uppercase' }}>Current:</span>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sim</span>
               <span>
                 {simDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}
                 {' '}
@@ -98,14 +98,15 @@ export default function Layout() {
                 onClick={handleResetTime}
                 title="Reset to Feb 14"
                 style={{
-                  border: 'none',
-                  background: '#ddd',
-                  borderRadius: '3px',
-                  padding: '2px 6px',
+                  border: '1px solid var(--color-text)',
+                  background: 'transparent',
+                  padding: '1px 6px',
                   cursor: 'pointer',
-                  fontSize: '0.7rem',
-                  marginLeft: '4px',
-                  fontWeight: 'bold'
+                  fontSize: '0.65rem',
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                  fontFamily: 'var(--font-mono)',
                 }}
               >
                 Reset
