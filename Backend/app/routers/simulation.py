@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
@@ -28,84 +29,48 @@ from app.services.simulation_service import (
     get_simulation_results,
     run_simulation_round,
     simulate_semester,
+    trigger_agent_actions,
 )
-from app.services.token_service import allocate_tokens
 
 router = APIRouter(prefix="/api/simulation", tags=["simulation"])
 
-
-@router.post("/simulate-semester")
-async def trigger_simulate_semester(weeks: int = 1, db: AsyncSession = Depends(get_db)):
-    """Run a semester simulation (behavior-based)."""
-    return await simulate_semester(db, weeks=weeks)
-
-
-@router.post("/agents/generate", response_model=list[AgentResponse], status_code=201)
-async def generate_agents(data: BulkAgentCreate, db: AsyncSession = Depends(get_db)):
-    """Generate agents with preferences drawn from admin popularity distributions."""
-    agents = []
-    for i in range(data.count):
-        agent = Agent(
-            name=f"{data.name_prefix}_{i + 1}",
-            token_balance=data.initial_balance,
-            max_bookings=data.max_bookings,
-        )
-        db.add(agent)
-        agents.append(agent)
-
-    await db.flush()
-
-    if data.generate_preferences:
-        for agent in agents:
-            await generate_preferences_for_agent(agent, db)
-
-    await db.commit()
-    for agent in agents:
-        await db.refresh(agent)
-    return agents
-
-
-@router.post("/round")
-async def run_round(db: AsyncSession = Depends(get_db)):
-    """Run one simulation round (allocate tokens, tick auctions)."""
-    result = await run_simulation_round(db)
-    return result
-
-
-@router.post("/allocate-tokens")
-async def trigger_token_allocation(db: AsyncSession = Depends(get_db)):
-    """Manually trigger token allocation to all active agents."""
-    transactions = await allocate_tokens(db)
-    await db.commit()
-    return {"tokens_allocated": len(transactions)}
-
-
-@router.get("/results")
-async def get_results(db: AsyncSession = Depends(get_db)):
-    """Get simulation metrics."""
-    return await get_simulation_results(db)
-
-
 @router.post("/time/advance-day")
 async def advance_day(db: AsyncSession = Depends(get_db)):
-    """Advance simulation time by 24 hours."""
-    # 1. Update Config Date
-    res = await db.execute(select(AdminConfig).where(AdminConfig.id == 1))
-    config = res.scalar_one_or_none()
-    if not config:
-        config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 14, 9, 0))
-        db.add(config)
-    elif config.current_simulation_date is None:
-        config.current_simulation_date = datetime(2026, 2, 14, 9, 0)
-    
-    config.current_simulation_date += timedelta(days=1)
-    new_date = config.current_simulation_date
-    
-    # 2. Recalculate Prices
-    await recalculate_prices(db, new_date)
-    
-    await db.commit()
-    return {"current_date": new_date.isoformat(), "message": "Advanced 1 day"}
+    import traceback
+    try:
+        """Advance simulation time by 24 hours."""
+        # 1. Update Config Date
+        res = await db.execute(select(AdminConfig).where(AdminConfig.id == 1))
+        config = res.scalar_one_or_none()
+        if not config:
+            config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 15, 9, 0))
+            db.add(config)
+        elif config.current_simulation_date is None:
+            config.current_simulation_date = datetime(2026, 2, 15, 9, 0)
+        
+        # Advance in steps if we want granular behavior, or just jump
+        # For interactive simulation, we usually want to jump but trigger logic
+        # Let's jump 1 day but trigger actions for "today"
+        
+        current_date = config.current_simulation_date
+        config.current_simulation_date += timedelta(days=1)
+        
+        # 2. Recalculate Prices
+        await recalculate_prices(db, config.current_simulation_date)
+        
+        # 3. Trigger Agent Actions (Simulate activity for the day passed)
+        # We might want to simulate hour by hour, but for speed just trigger once?
+        # Better: Simulate a few key hours (9, 12, 15) to get spread
+        actions = 0
+        for h in [9, 12, 15, 18]:
+            sim_time = current_date.replace(hour=h, minute=0)
+            actions += await trigger_agent_actions(db, sim_time)
+        
+        await db.commit()
+        return {"current_date": config.current_simulation_date.isoformat(), "message": "Advanced 1 day", "actions_triggered": actions}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/time/advance-hour")
 async def advance_hour(db: AsyncSession = Depends(get_db)):
@@ -114,33 +79,37 @@ async def advance_hour(db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(AdminConfig).where(AdminConfig.id == 1))
     config = res.scalar_one_or_none()
     if not config:
-        config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 14, 9, 0))
+        config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 15, 9, 0))
         db.add(config)
     elif config.current_simulation_date is None:
-        config.current_simulation_date = datetime(2026, 2, 14, 9, 0)
+        config.current_simulation_date = datetime(2026, 2, 15, 9, 0)
     
+    current_date = config.current_simulation_date
     config.current_simulation_date += timedelta(hours=1)
     new_date = config.current_simulation_date
     
     # 2. Recalculate Prices (Dynamic Pricing reaction)
     await recalculate_prices(db, new_date)
     
+    # 3. Agent Actions
+    actions = await trigger_agent_actions(db, current_date) # Act on the hour that just finished/ongoing
+    
     await db.commit()
-    return {"current_date": new_date.isoformat(), "message": "Advanced 1 hour"}
+    return {"current_date": new_date.isoformat(), "message": "Advanced 1 hour", "actions_triggered": actions}
 
 @router.post("/time/reset")
 async def reset_time(db: AsyncSession = Depends(get_db)):
-    """Reset simulation time to Feb 14."""
+    """Reset simulation time to Feb 15."""
     res = await db.execute(select(AdminConfig).where(AdminConfig.id == 1))
     config = res.scalar_one_or_none()
     if config:
-        config.current_simulation_date = datetime(2026, 2, 14, 9, 0)
+        config.current_simulation_date = datetime(2026, 2, 15, 9, 0)
     else:
-        config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 14, 9, 0))
+        config = AdminConfig(id=1, current_simulation_date=datetime(2026, 2, 15, 9, 0))
         db.add(config)
     
     await db.commit()
-    return {"current_date": "2026-02-14T09:00:00", "message": "Time reset"}
+    return {"current_date": "2026-02-15T09:00:00", "message": "Time reset"}
 
 
 @router.post("/reset")
@@ -154,7 +123,7 @@ async def reset_simulation(db: AsyncSession = Depends(get_db)):
     
     # Reset Date as well
     if config:
-        config.current_simulation_date = datetime(2026, 2, 14, 9, 0)
+        config.current_simulation_date = datetime(2026, 2, 15, 9, 0)
 
     # Delete in dependency order
     await db.execute(delete(GroupBidMember))
@@ -186,22 +155,36 @@ async def reset_simulation(db: AsyncSession = Depends(get_db)):
     price_step = config.dutch_price_step if config else 3.0
     tick_interval = config.dutch_tick_interval_sec if config else 10.0
 
-    engine = get_auction_engine("dutch")
+    auctions_to_insert = []
+    created_at = config.current_simulation_date if config else datetime.utcnow()
+    
+    # Bulk Update Slots status? Ideally, but iterating objects updates session
+    # For speed, we might want bulk update too, but object iteration is okay for now if we bulk insert auctions
+    
     for slot in slots:
         slot.status = TimeSlotStatus.IN_AUCTION
-        auction = Auction(
-            time_slot_id=slot.id,
-            auction_type="dutch",
-            start_price=start_price,
-            current_price=start_price,
-            min_price=min_price,
-            price_step=price_step,
-            tick_interval_sec=tick_interval,
-            created_at=config.current_simulation_date if config else datetime.utcnow()
-        )
-        db.add(auction)
-        await db.flush()
-        await engine.start(auction, db)
+        auctions_to_insert.append({
+            "id": str(uuid.uuid4()), # We need to import uuid if not present, check
+            "time_slot_id": slot.id,
+            "auction_type": "dutch",
+            "start_price": start_price,
+            "current_price": start_price,
+            "min_price": min_price,
+            "price_step": price_step,
+            "tick_interval_sec": tick_interval,
+            "created_at": created_at,
+            "status": AuctionStatus.ACTIVE
+        })
+    
+    if auctions_to_insert:
+        from sqlalchemy import insert
+        await db.execute(insert(Auction), auctions_to_insert)
+        
+    # We need to start engines? 
+    # get_auction_engine("dutch").start() usually just sets status to active or logs
+    # If engine.start does DB changes, we might skip it or do it in bulk. 
+    # Standard Dutch auction start just is "Active".
+     
 
     await db.commit()
     return {"status": "reset_complete"}

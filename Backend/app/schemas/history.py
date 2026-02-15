@@ -19,6 +19,15 @@ class AgentConfig(BaseModel):
     urgency_min: float = 0.1
     urgency_max: float = 1.0
     count: int = 10
+    pref_location: Optional[str] = None
+    # Granular Priorities (0.0 to 1.0)
+    time_weight: float = 0.5
+    day_weight: float = 0.5
+    capacity_weight: float = 0.5
+    location_weight: float = 0.5
+    # Specific preferences
+    preferred_days: List[int] = [] # 0=Mon, 6=Sun
+    preferred_hours: List[int] = [] # 0-23
 
 class SimulationConfig(BaseModel):
     days: int = 14
@@ -27,6 +36,7 @@ class SimulationConfig(BaseModel):
     weights: Dict[str, Dict[str, float]]
     agent_configs: List[AgentConfig]
     events: Dict[int, float] = {} # Day index -> Demand Multiplier
+    use_real_rooms: bool = True
 
 class SimulationResult(BaseModel):
     day: int

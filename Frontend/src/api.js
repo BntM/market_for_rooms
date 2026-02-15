@@ -24,6 +24,10 @@ async function request(path, options = {}) {
 }
 
 const api = {
+  // Generic
+  get: (url) => request(url),
+  post: (url, data) => request(url, { method: 'POST', body: JSON.stringify(data) }),
+
   // Resources
   getResources: () => request('/resources/'),
   createResource: (data) => request('/resources/', { method: 'POST', body: JSON.stringify(data) }),

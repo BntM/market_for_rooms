@@ -1,8 +1,12 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import pandas as pd
 import io
 
+from app.database import get_db
+from app.models import Resource
 from app.services.historical_analyst import HistoricalAnalyst
 from app.services.market_simulator import RoomMarketSimulator
 from app.schemas.history import (
@@ -41,15 +45,21 @@ async def analyze_history(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @router.post("/simulate", response_model=List[SimulationResult])
-async def run_simulation(config: SimulationConfig):
+async def run_simulation(config: SimulationConfig, db: AsyncSession = Depends(get_db)):
     """
     Run an in-memory market simulation based on the provided configuration.
     Returns a list of all bookings made during the simulation.
     """
     try:
         sim = RoomMarketSimulator(base_price=config.base_price)
-        # Setup Rooms (could be parameterized in future, using defaults for now)
-        sim.setup_rooms(num_rooms=40)
+        
+        # Setup Rooms
+        if config.use_real_rooms:
+            result = await db.execute(select(Resource))
+            rooms = result.scalars().all()
+            sim.setup_rooms(existing_rooms=rooms)
+        else:
+            sim.setup_rooms(num_rooms=40)
         
         # Setup Agents
         sim.setup_agents_advanced([a.model_dump() for a in config.agent_configs])
@@ -66,7 +76,7 @@ async def run_simulation(config: SimulationConfig):
         raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")
 
 @router.post("/optimize", response_model=OptimizationResponse)
-async def optimize_price(config: OptimizationRequest):
+async def optimize_price(config: OptimizationRequest, db: AsyncSession = Depends(get_db)):
     """
     Run multiple simulations to find the base price that maximizes revenue.
     """
@@ -76,11 +86,18 @@ async def optimize_price(config: OptimizationRequest):
         
         agent_configs = [a.model_dump() for a in config.agent_configs]
         
+        # Setup Rooms
+        existing_rooms = None
+        if config.use_real_rooms:
+            result = await db.execute(select(Resource))
+            existing_rooms = result.scalars().all()
+
         result = sim.optimize_price(
             base_price_range=price_range,
             agent_configs=agent_configs,
             weights=config.weights,
-            events=config.events
+            events=config.events,
+            existing_rooms=existing_rooms
         )
         
         return OptimizationResponse(

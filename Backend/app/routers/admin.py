@@ -136,8 +136,8 @@ async def _process_import(df: pd.DataFrame, db: AsyncSession):
     
     # 4. Generate Future Slots
     created_slots = 0
-    start_date = datetime.now()
-    days_to_generate = 120
+    start_date = config.current_simulation_date or datetime.now()
+    days_to_generate = 14 # Optimized for demo speed (was 45)
     
     w_cap = config.capacity_weight
     w_loc = config.location_weight
@@ -146,8 +146,13 @@ async def _process_import(df: pd.DataFrame, db: AsyncSession):
     w_lead = config.lead_time_sensitivity
     g_mod = config.global_price_modifier
     
+    import random
+    
     slots_to_insert = []
     auctions_to_insert = []
+
+    # Pre-calculate factors for speed
+    start_price_base = 15.0
     
     for day_offset in range(days_to_generate):
         current_date = start_date + timedelta(days=day_offset)
@@ -160,10 +165,20 @@ async def _process_import(df: pd.DataFrame, db: AsyncSession):
             slot_start = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
             slot_end = slot_start + timedelta(minutes=30)
             
+            # Time Score
+            hour = slot_start.hour
+            time_key = f"{current_day_of_week}-{hour}"
+            hist_time_pop = float(time_pop.get(time_key, 0.5))
+            if time_key not in time_pop:
+                dist_from_peak = abs(hour - 14)
+                hour_score = max(0.2, 1.0 - (dist_from_peak / 10.0))
+            else:
+                hour_score = hist_time_pop
+
             for (r_name, r_loc), resource in resource_db_map.items():
                 slot_id = str(uuid.uuid4())
                 
-                # We are creating auctions immediately, so status is IN_AUCTION
+                # Create Slot
                 new_slot = {
                     "id": slot_id,
                     "resource_id": resource.id,
@@ -173,17 +188,63 @@ async def _process_import(df: pd.DataFrame, db: AsyncSession):
                 }
                 slots_to_insert.append(new_slot)
                 created_slots += 1
+                
+                # --- Calculate Initial Price Inline ---
+                # Location Score
+                loc_score = float(loc_pop.get(resource.location, 0.5))
+                
+                # Capacity Score
+                cap_score = min(resource.capacity, 100) / 100.0
+                
+                # Lead Time (It's new, so creation time ~ now. start time - now)
+                delta = slot_start - start_date # approx
+                days_out = max(0, delta.total_seconds() / 86400.0)
+                lead_ratio = min(1.0, days_out / 30.0)
+                lead_score = 1.0 + (w_lead * (1.1 - lead_ratio))
+                
+                # Noise
+                noise = 1.0 + (random.uniform(-0.05, 0.05))
+                
+                base_demand = (
+                    (cap_score * w_cap * 0.5) + 
+                    (loc_score * w_loc * 2.0) + 
+                    (hour_score * w_tod * 2.5) + 
+                    (hist_time_pop * w_dow * 1.5)
+                ) / 5.0
+                
+                final_price = start_price_base * g_mod * lead_score * base_demand * noise
+                final_price = max(5.0, min(final_price, 500.0))
+                
+                # Create Auction
+                auc_id = str(uuid.uuid4())
+                start_p = round(float(final_price * 1.6), 2)
+                min_p = round(float(final_price * 0.4), 2)
+                curr_p = round(float(final_price), 2)
+                
+                auctions_to_insert.append({
+                    "id": auc_id,
+                    "time_slot_id": slot_id,
+                    "start_price": start_p,
+                    "current_price": curr_p,
+                    "min_price": min_p,
+                    "status": AuctionStatus.ACTIVE,
+                    "auction_type": "dutch", # Default
+                    "price_step": 2.0,
+                    "tick_interval_sec": 10.0,
+                    "created_at": start_date
+                })
 
     # Bulk Insert slots first so auctions can reference them
-    chunk_size = 500
+    chunk_size = 1000
     for i in range(0, len(slots_to_insert), chunk_size):
         await db.execute(insert(TimeSlot), slots_to_insert[i:i+chunk_size])
     
+    # Bulk Insert auctions
+    for i in range(0, len(auctions_to_insert), chunk_size):
+        await db.execute(insert(Auction), auctions_to_insert[i:i+chunk_size])
+    
     await db.flush()
-
-    # 5. Calculate Initial Prices using the new service
-    from app.services.pricing_service import recalculate_prices
-    await recalculate_prices(db, start_date=start_date, days=days_to_generate)
+    # Skip recalculate_prices call since we did it inline
         
     return {"resources_created": created_resources, "time_slots_created": created_slots}
 
@@ -205,23 +266,33 @@ async def import_resources(file: UploadFile = File(...), db: AsyncSession = Depe
 async def reset_and_load_defaults(db: AsyncSession = Depends(get_db)):
     try:
         # Load local CSV
-        # Assuming run from root or app dir.
-        try:
-            df = pd.read_csv("gmu_room_data_full.csv")
-        except FileNotFoundError:
-             # Try parent
-             df = pd.read_csv("../gmu_room_data_full.csv")
+        import os
+        csv_path = "gmu_room_data_full.csv"
+        if not os.path.exists(csv_path):
+             csv_path = "../gmu_room_data_full.csv"
+        
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"Could not find gmu_room_data_full.csv in {os.getcwd()} or ..")
+
+        df = pd.read_csv(csv_path)
              
         # Delete existing Logic
+        # Order matters due to FKs
+        await db.execute(text("DELETE FROM bookings"))
+        await db.execute(text("DELETE FROM bids"))
         await db.execute(text("DELETE FROM auctions"))
         await db.execute(text("DELETE FROM time_slots"))
         # Resources kept to avoid ID key issues if referenced elsewhere? 
         # But if we delete slots, we can delete resources if we want fresh start.
-        # Let's keep resources to be safe, unique check handles them.
+        await db.execute(text("DELETE FROM resources"))
+        
+        # Reset sequences if using Postgres, but for SQLite it manages rowids.
         
         res = await _process_import(df, db)
         await db.commit()
         return res
     except Exception as e:
         await db.rollback()
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

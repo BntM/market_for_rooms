@@ -1,9 +1,13 @@
 import { useState } from 'react'
 
-export default function SlotDetail({ slots, auctions, agent, onClose, onRemoveSlot, onBuyAll, onSetOrder }) {
+export default function SlotDetail({ slots, auctions, agent, onClose, onRemoveSlot, onBuyAll, onSetOrder, agents }) {
   const [maxPrice, setMaxPrice] = useState('')
+  const [splitWith, setSplitWith] = useState('')
 
   const isOpen = slots && slots.length > 0
+
+  // Filter potential split partners
+  const potentialPartners = agent && agents ? agents.filter(a => a.id !== agent.id) : []
 
   const formatDateTime = (isoStr) => {
     const d = new Date(isoStr)
@@ -74,15 +78,36 @@ export default function SlotDetail({ slots, auctions, agent, onClose, onRemoveSl
                     Your balance: {agent.token_balance.toFixed(1)} tokens
                   </div>
                 )}
+
+                {agent && (
+                  <div className="form-group" style={{ marginTop: '1rem', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Split cost with (50/50)</label>
+                    <select
+                      value={splitWith}
+                      onChange={(e) => setSplitWith(e.target.value)}
+                      style={{ fontSize: '0.85rem', padding: '0.3rem' }}
+                    >
+                      <option value="">No split (I pay full)</option>
+                      {potentialPartners.map(a => (
+                        <option key={a.id} value={a.id}>{a.name} ({a.token_balance.toFixed(1)})</option>
+                      ))}
+                    </select>
+                    {splitWith && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-accent)', marginTop: '0.25rem' }}>
+                        You pay {(totalPrice / 2).toFixed(1)}, partner pays {(totalPrice / 2).toFixed(1)}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="detail-panel__section">
                 <button
                   className="btn btn--primary"
                   style={{ width: '100%' }}
-                  onClick={() => onBuyAll(slots)}
+                  onClick={() => onBuyAll(slots, { splitWith })}
                 >
-                  Buy {activeItems.length > 1 ? `All ${activeItems.length} Slots` : 'Now'} — {totalPrice.toFixed(1)} tokens
+                  Buy {activeItems.length > 1 ? `All ${activeItems.length} Slots` : 'Now'} — {splitWith ? (totalPrice / 2).toFixed(1) : totalPrice.toFixed(1)} tokens {splitWith ? '(your share)' : ''}
                 </button>
               </div>
 

@@ -19,3 +19,6 @@ class Booking(Base):
     time_slot: Mapped["TimeSlot"] = relationship(back_populates="bookings")  # noqa: F821
     agent: Mapped["Agent"] = relationship(back_populates="bookings")  # noqa: F821
     bid: Mapped["Bid"] = relationship(back_populates="bookings")  # noqa: F821
+
+    split_with_agent_id: Mapped[str] = mapped_column(String, nullable=True)
+    split_status: Mapped[str] = mapped_column(String, default="none") # none, pending, accepted, rejected

@@ -91,33 +91,43 @@ async def recalculate_prices(db: AsyncSession, start_date: datetime, days: int =
         return max(5.0, min(final_price, 500.0))
 
     # Update Loop
+    # Update Loop - Optimize for Bulk Insert
+    auctions_to_insert = []
+    
     for slot, auction in rows:
         resource = resource_map.get(slot.resource_id)
         if not resource: continue
         
         new_price = calculate_price(slot, resource)
         
+        start_price = round(float(new_price * 1.6), 2)
+        min_price = round(float(new_price * 0.4), 2)
+        current_price = round(float(new_price), 2)
+        
         if auction:
              # Update existing auction
-             auction.current_price = round(float(new_price), 2)
-             auction.start_price = round(float(new_price * 1.6), 2)
-             auction.min_price = round(float(new_price * 0.4), 2)
+             auction.current_price = current_price
+             auction.start_price = start_price
+             auction.min_price = min_price
         else:
-            # Create new auction if missing
+            # Prepare for bulk insert
             new_auc_id = str(uuid.uuid4())
-            new_auction = Auction(
-                id=new_auc_id,
-                time_slot_id=slot.id,
-                start_price=round(float(new_price * 1.6), 2),
-                min_price=round(float(new_price * 0.4), 2),
-                current_price=round(float(new_price), 2),
-                status=AuctionStatus.ACTIVE,
-                auction_type=config.default_auction_type,
-                price_step=config.dutch_price_step,
-                tick_interval_sec=config.dutch_tick_interval_sec,
-                created_at=config.current_simulation_date or datetime.utcnow()
-            )
-            db.add(new_auction)
+            auctions_to_insert.append({
+                "id": new_auc_id,
+                "time_slot_id": slot.id,
+                "start_price": start_price,
+                "min_price": min_price,
+                "current_price": current_price,
+                "status": AuctionStatus.ACTIVE,
+                "auction_type": config.default_auction_type,
+                "price_step": config.dutch_price_step,
+                "tick_interval_sec": config.dutch_tick_interval_sec,
+                "created_at": config.current_simulation_date or datetime.utcnow()
+            })
+            
+    if auctions_to_insert:
+        # Bulk Insert
+        await db.execute(insert(Auction), auctions_to_insert)
             
     # Increment model version
     config.pricing_model_version += 1

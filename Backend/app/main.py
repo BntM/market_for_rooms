@@ -6,14 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db
 import app.models  # noqa: F401 — register all models with SQLAlchemy
-from app.routers import admin, agents, auctions, market, resources, simulation, history, pettingzoo_sim
-
+from app.routers import admin, agents, auctions, market, resources, simulation, history, pettingzoo_sim, bookings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     yield
-
 
 app = FastAPI(
     title=settings.APP_TITLE,
@@ -32,6 +30,7 @@ app.add_middleware(
 app.include_router(admin.router)
 app.include_router(resources.router)
 app.include_router(agents.router)
+app.include_router(bookings.router)
 app.include_router(auctions.router)
 app.include_router(market.router)
 app.include_router(simulation.router)

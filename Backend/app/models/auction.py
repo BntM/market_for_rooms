@@ -54,6 +54,7 @@ class Bid(Base):
     agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id"), nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     is_group_bid: Mapped[bool] = mapped_column(Boolean, default=False)
+    split_with_agent_id: Mapped[str] = mapped_column(String, nullable=True)
     status: Mapped[BidStatus] = mapped_column(Enum(BidStatus), default=BidStatus.PENDING)
     placed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

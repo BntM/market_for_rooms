@@ -10,7 +10,18 @@ class RoomMarketSimulator:
         self.agents = []
         self.history = []
         
-    def setup_rooms(self, num_rooms=20, locations=None, capacities=None):
+    def setup_rooms(self, num_rooms=20, locations=None, capacities=None, existing_rooms=None):
+        if existing_rooms:
+            self.rooms = []
+            for r in existing_rooms:
+                self.rooms.append({
+                    "id": str(r.id),
+                    "location": r.location,
+                    "capacity": r.capacity,
+                    "status": "available"
+                })
+            return
+
         if not locations:
             locations = ["Library", "Student Center", "Engineering Hall", "North Campus"]
         if not capacities:
@@ -38,7 +49,7 @@ class RoomMarketSimulator:
                     "id": f"agent_{aid}",
                     "type": config.get("name", "Unknown"),
                     "tokens": 50 * config.get("budget_mult", 1.0),
-                    "pref_location": random.choice(["Library", "Student Center", "Engineering Hall"]),
+                    "pref_location": config.get("pref_location") or random.choice(["Library", "Student Center", "Engineering Hall"]),
                     "urgency": random.uniform(config.get("urgency_min", 0.1), config.get("urgency_max", 1.0))
                 })
                 aid += 1
@@ -135,7 +146,7 @@ class RoomMarketSimulator:
                 
         return results
 
-    def optimize_price(self, base_price_range: List[int], agent_configs, weights, events) -> Dict:
+    def optimize_price(self, base_price_range: List[int], agent_configs, weights, events, existing_rooms=None) -> Dict:
         """Runs simulations for multiple base prices and returns the best one."""
         best_price = 0
         max_revenue = 0
@@ -143,7 +154,10 @@ class RoomMarketSimulator:
         
         for price in base_price_range:
             self.base_price = price
-            self.setup_rooms(num_rooms=40) # Fixed for optimization
+            if existing_rooms:
+                self.setup_rooms(existing_rooms=existing_rooms)
+            else:
+                self.setup_rooms(num_rooms=40) # Fixed for optimization
             self.setup_agents_advanced(agent_configs)
             
             sim_results = self.run_simulation(days=14, weights=weights, events=events)

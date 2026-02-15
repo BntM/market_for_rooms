@@ -13,6 +13,13 @@ class AgentCreate(BaseModel):
     behavior_flexibility: float = 0.5
     behavior_preferred_days: str = "0,1,2,3,4"
     behavior_preferred_period: str = "any"
+    behavior_preferred_hours: str = "9,10,11,12,13,14,15,16,17"
+    
+    # Granular Weights
+    behavior_time_weight: float = 0.5
+    behavior_day_weight: float = 0.5
+    behavior_capacity_weight: float = 0.5
+    behavior_location_weight: float = 0.5
 
 
 class AgentResponse(BaseModel):
@@ -28,6 +35,12 @@ class AgentResponse(BaseModel):
     behavior_flexibility: float = 0.5
     behavior_preferred_days: str = "0,1,2,3,4"
     behavior_preferred_period: str = "any"
+    behavior_preferred_hours: str = "9,10,11,12,13,14,15,16,17"
+    
+    behavior_time_weight: float = 0.5
+    behavior_day_weight: float = 0.5
+    behavior_capacity_weight: float = 0.5
+    behavior_location_weight: float = 0.5
 
     model_config = {"from_attributes": True}
 

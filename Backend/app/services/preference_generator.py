@@ -35,6 +35,29 @@ async def generate_preferences_for_agent(agent: Agent, db: AsyncSession) -> None
     """Generate random preferences for an agent based on admin popularity config."""
     config = await _get_config(db)
 
+    
+    # Generate Granular Weights
+    agent.behavior_time_weight = round(random.uniform(0.1, 0.9), 2)
+    agent.behavior_day_weight = round(random.uniform(0.1, 0.9), 2)
+    agent.behavior_capacity_weight = round(random.uniform(0.1, 0.9), 2)
+    agent.behavior_location_weight = round(random.uniform(0.1, 0.9), 2)
+    
+    # Generate Preferred Hours
+    # e.g. Morning person (7-12), Afternoon (12-17), Evening (17-22), or Mixed
+    period = random.choice(["morning", "afternoon", "evening", "mixed"])
+    agent.behavior_preferred_period = period
+    
+    if period == "morning":
+        hours = list(range(7, 12))
+    elif period == "afternoon":
+        hours = list(range(12, 18))
+    elif period == "evening":
+        hours = list(range(17, 23))
+    else:
+        hours = sorted(random.sample(range(7, 23), k=8))
+        
+    agent.behavior_preferred_hours = ",".join(map(str, hours))
+
     if config.location_popularity:
         value, weight = _weighted_sample(config.location_popularity)
         pref = AgentPreference(

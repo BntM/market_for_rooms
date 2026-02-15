@@ -23,7 +23,14 @@ class Agent(Base):
     behavior_price_sensitivity: Mapped[float] = mapped_column(Float, default=0.5) # 0=Rich, 1=Cheap
     behavior_flexibility: Mapped[float] = mapped_column(Float, default=0.5) # 0=Rigid, 1=Flexible
     behavior_preferred_days: Mapped[str] = mapped_column(String, default="0,1,2,3,4") # CSV days
+    behavior_preferred_hours: Mapped[str] = mapped_column(String, default="9,10,11,12,13,14,15,16,17") # CSV hours
     behavior_preferred_period: Mapped[str] = mapped_column(String, default="any") # morning, afternoon, evening, any
+    
+    # Granular Weights (0.0 to 1.0)
+    behavior_time_weight: Mapped[float] = mapped_column(Float, default=0.5)
+    behavior_day_weight: Mapped[float] = mapped_column(Float, default=0.5)
+    behavior_capacity_weight: Mapped[float] = mapped_column(Float, default=0.5)
+    behavior_location_weight: Mapped[float] = mapped_column(Float, default=0.5)
 
     preferences: Mapped[list["AgentPreference"]] = relationship(
         back_populates="agent", cascade="all, delete-orphan"

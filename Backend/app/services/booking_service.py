@@ -92,6 +92,8 @@ async def create_booking_from_bid(
             time_slot_id=slot.id,
             agent_id=agent_id,
             bid_id=bid.id,
+            split_with_agent_id=bid.split_with_agent_id if not bid.is_group_bid else None,
+            split_status="pending" if bid.split_with_agent_id else "none",
         )
         db.add(booking)
         bookings.append(booking)

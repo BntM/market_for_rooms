@@ -36,6 +36,7 @@ class BidCreate(BaseModel):
     agent_id: str
     amount: float
     is_group_bid: bool = False
+    split_with_agent_id: str | None = None
     group_members: list["GroupMemberContribution"] | None = None
 
 
@@ -70,6 +71,8 @@ class BookingResponse(BaseModel):
     time_slot_id: str
     agent_id: str
     bid_id: str
+    split_with_agent_id: str | None = None
+    split_status: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -80,6 +83,8 @@ class BookingDetailResponse(BaseModel):
     time_slot_id: str
     agent_id: str
     bid_id: str
+    split_with_agent_id: str | None = None
+    split_status: str | None = None
     created_at: datetime
     # Enriched fields
     room_name: str | None = None

@@ -194,6 +194,7 @@ class DutchAuctionEngine(AuctionEngine):
                 agent_id=bid_data.agent_id,
                 amount=bid_data.amount,
                 is_group_bid=False,
+                split_with_agent_id=bid_data.split_with_agent_id,
                 status=BidStatus.ACCEPTED,
             )
             db.add(bid)

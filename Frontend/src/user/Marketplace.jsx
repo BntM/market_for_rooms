@@ -88,7 +88,7 @@ export default function Marketplace() {
     })
   }
 
-  const handleBuyAll = async (slotsToBuy) => {
+  const handleBuyAll = async (slotsToBuy, splitOptions = null) => {
     if (!selectedAgent) return
     const items = slotsToBuy.map((slot) => {
       const auction = auctions.find((a) => a.time_slot_id === slot.id)
@@ -112,6 +112,7 @@ export default function Marketplace() {
         await api.placeBid(item.auction.id, {
           agent_id: selectedAgent.id,
           amount: item.auction.current_price,
+          split_with_agent_id: splitOptions?.splitWith || null,
         })
       } catch (e) {
         alert(`Failed to buy slot: ${e.message}`)
@@ -225,6 +226,7 @@ export default function Marketplace() {
         onRemoveSlot={(slot) => setSelectedSlots((prev) => prev.filter((s) => s.id !== slot.id))}
         onBuyAll={handleBuyAll}
         onSetOrder={handleSetOrder}
+        agents={agents}
       />
     </div>
   )

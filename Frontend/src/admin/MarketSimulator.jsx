@@ -33,12 +33,14 @@ export default function MarketSimulator() {
     const [days, setDays] = useState(14)
     const [tokenDrip, setTokenDrip] = useState(5)
     const [numAgents, setNumAgents] = useState(100)
+    const [useRealRooms, setUseRealRooms] = useState(true)
 
     // Advanced Config
     const [customAgents, setCustomAgents] = useState([
         { name: 'Average Student', count: 80, budget_mult: 1.0, urgency_min: 0.1, urgency_max: 0.5 },
         { name: 'Rich Procrastinator', count: 20, budget_mult: 2.0, urgency_min: 0.5, urgency_max: 1.0 },
     ])
+    const [individualAgents, setIndividualAgents] = useState([])
     const [events, setEvents] = useState([]) // Array of { day: 7, multiplier: 2.0 }
     const [newEventDay, setNewEventDay] = useState('')
     const [newEventMult, setNewEventMult] = useState(1.5)
@@ -54,7 +56,15 @@ export default function MarketSimulator() {
             if (mode === 'simple') {
                 agentConfigs = [{ name: 'Standard Agent', count: numAgents, budget_mult: 1.0, urgency_min: 0.1, urgency_max: 0.8 }]
             } else {
-                agentConfigs = customAgents
+                agentConfigs = [
+                    ...customAgents,
+                    ...individualAgents.map(a => ({
+                        ...a,
+                        count: 1,
+                        urgency_min: parseFloat(a.urgency),
+                        urgency_max: parseFloat(a.urgency)
+                    }))
+                ]
             }
 
             const eventDict = events.reduce((acc, curr) => ({ ...acc, [curr.day]: curr.multiplier }), {})
@@ -68,7 +78,8 @@ export default function MarketSimulator() {
                     capacity: { "2": 1.0, "4": 1.4, "6": 1.8, "10": 2.5 }
                 },
                 agent_configs: agentConfigs,
-                events: eventDict
+                events: eventDict,
+                use_real_rooms: useRealRooms
             }
 
             const res = await api.runMarketSimulation(config)
@@ -90,6 +101,7 @@ export default function MarketSimulator() {
                 weights: { location: { "Library": 1.3 }, capacity: { "4": 1.4 } },
                 agent_configs: customAgents,
                 events: events.reduce((acc, curr) => ({ ...acc, [curr.day]: curr.multiplier }), {}),
+                use_real_rooms: useRealRooms,
                 price_range_start: 5,
                 price_range_end: 50,
                 price_step: 3
@@ -106,6 +118,10 @@ export default function MarketSimulator() {
 
     const handleAddAgent = () => {
         setCustomAgents([...customAgents, { name: 'New Agent', count: 10, budget_mult: 1.0, urgency_min: 0.1, urgency_max: 0.5 }])
+    }
+
+    const handleAddIndividualAgent = () => {
+        setIndividualAgents([...individualAgents, { name: 'Indv Agent', budget_mult: 1.0, urgency: 0.5, pref_location: 'Library' }])
     }
 
     const handleAddEvent = () => {
@@ -195,6 +211,11 @@ export default function MarketSimulator() {
                     </div>
                 )}
 
+                <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                    <input type="checkbox" checked={useRealRooms} onChange={e => setUseRealRooms(e.target.checked)} id="useRealRooms" />
+                    <label htmlFor="useRealRooms" style={{ marginBottom: 0 }}>Use Actual Market Rooms (from DB)</label>
+                </div>
+
                 {mode !== 'simple' && (
                     <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
                         <h3>👥 Custom Agents</h3>
@@ -206,6 +227,22 @@ export default function MarketSimulator() {
                             </div>
                         ))}
                         <button className="btn btn--small" onClick={handleAddAgent}>+ Add Agent Type</button>
+
+                        <h3 style={{ marginTop: '1rem' }}>👤 Individual Agents</h3>
+                        {individualAgents.map((a, i) => (
+                            <div key={i} className="grid" style={{ gap: '0.5rem', marginBottom: '0.5rem', gridTemplateColumns: 'repeat(5, 1fr)' }}>
+                                <input placeholder="Name" value={a.name} onChange={e => { const n = [...individualAgents]; n[i].name = e.target.value; setIndividualAgents(n) }} />
+                                <input type="number" placeholder="Budget X" step="0.1" value={a.budget_mult} onChange={e => { const n = [...individualAgents]; n[i].budget_mult = parseFloat(e.target.value); setIndividualAgents(n) }} />
+                                <input type="number" placeholder="Urgency (0-1)" step="0.1" min="0" max="1" value={a.urgency} onChange={e => { const n = [...individualAgents]; n[i].urgency = parseFloat(e.target.value); setIndividualAgents(n) }} />
+                                <select value={a.pref_location} onChange={e => { const n = [...individualAgents]; n[i].pref_location = e.target.value; setIndividualAgents(n) }}>
+                                    <option value="Library">Library</option>
+                                    <option value="Student Center">Student Center</option>
+                                    <option value="Engineering Hall">Engineering Hall</option>
+                                </select>
+                                <button className="btn btn--small btn--danger" onClick={() => { const n = individualAgents.filter((_, idx) => idx !== i); setIndividualAgents(n) }}>X</button>
+                            </div>
+                        ))}
+                        <button className="btn btn--small" onClick={handleAddIndividualAgent}>+ Add Individual Agent</button>
 
                         <h3 style={{ marginTop: '1rem' }}>📅 Seasonality (Events)</h3>
                         <div className="grid" style={{ alignItems: 'end' }}>

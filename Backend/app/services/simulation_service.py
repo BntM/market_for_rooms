@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -197,3 +198,143 @@ async def simulate_semester(db: AsyncSession, weeks: int = 1):
 
     await db.commit()
     return {"days_simulated": days_to_sim, "bookings_made": total_actions}
+
+
+async def trigger_agent_actions(db: AsyncSession, current_date: datetime):
+    """
+    Simulate agent decisions for the current hour/moment in the interactive simulation.
+    Agents evaluate available slots based on their granular weights.
+    """
+    import random
+    import uuid
+    from datetime import timedelta
+    
+    # 1. Get Agents
+    agents_res = await db.execute(select(Agent).where(Agent.is_simulated == True))
+    agents = agents_res.scalars().all()
+    if not agents: return 0
+
+    # 2. Get Available Slots (Next 24 hours of interest)
+    future_window = current_date + timedelta(hours=24)
+    slots_res = await db.execute(
+        select(TimeSlot, Auction, Resource)
+        .join(Auction, Auction.time_slot_id == TimeSlot.id)
+        .join(Resource, Resource.id == TimeSlot.resource_id)
+        .where(
+            TimeSlot.start_time >= current_date,
+            TimeSlot.start_time <= future_window,
+            TimeSlot.status == TimeSlotStatus.IN_AUCTION
+        )
+    )
+    # Group by slot
+    rows = slots_res.all()
+    # Convert Row objects to tuples explicitly to allow reliable removal
+    candidates = [tuple(row) for row in rows] # [(TimeSlot, Auction, Resource), ...]
+    if not candidates: return 0
+
+    actions_taken = 0
+    
+    # 3. Evaluate
+    for agent in agents:
+        # Skip if ran out of tokens (simple check)
+        if agent.token_balance < 10: continue
+        
+        # Bias: Skip some agents randomly to simulate not everyone checking app every hour
+        if random.random() > 0.3: continue 
+
+        best_score = -1.0
+        best_candidate = None
+        
+        # Parse preferences safely
+        pref_hours = []
+        if agent.behavior_preferred_hours:
+             pref_hours = [int(h) for h in agent.behavior_preferred_hours.split(",") if h.strip().isdigit()]
+        
+        pref_days = []
+        if agent.behavior_preferred_days:
+            pref_days = [int(d) for d in agent.behavior_preferred_days.split(",") if d.strip().isdigit()]
+
+        for slot, auction, resource in candidates:
+            # --- Utility Calculation ---
+            score = 0.0
+            
+            # Time Weight
+            hour = slot.start_time.hour
+            if hour in pref_hours:
+                time_score = 1.0
+            else:
+                time_score = 0.2
+            score += time_score * agent.behavior_time_weight
+            
+            # Day Weight (simple mismatch penalty)
+            day = slot.start_time.weekday()
+            if day in pref_days:
+                day_score = 1.0
+            else:
+                day_score = 0.0
+            score += day_score * agent.behavior_day_weight
+            
+            # Location Weight (using generic logic or preference matching)
+            loc_score = 0.5 # Default neutral
+            if agent.behavior_location_weight > 0.7:
+                 # Deterministic hash to be consistent for same agent
+                 if hash(agent.id + resource.location) % 10 > 7:
+                     loc_score = 1.0
+                 else:
+                     loc_score = 0.1
+            else:
+                loc_score = 0.8 # Less picky
+            score += loc_score * agent.behavior_location_weight
+            
+            # Capacity Weight
+            cap_norm = min(resource.capacity, 20) / 20.0
+            score += cap_norm * agent.behavior_capacity_weight
+            
+            # Price Sensitivity (Negative factor)
+            price_ratio = auction.current_price / (agent.token_balance or 1.0) # Avoid div by zero
+            if price_ratio > 0.5: # Too expensive relative to balance
+                score -= 10.0 
+            
+            # Threshold to Buy
+            if score > 1.2:
+                if score > best_score:
+                    best_score = score
+                    best_candidate = (slot, auction, resource)
+
+        # 4. Act
+        if best_candidate:
+            target_slot, target_auction, target_resource = best_candidate
+            price = target_auction.current_price
+            
+            # Double check price
+            if agent.token_balance >= price:
+                # Buy
+                target_auction.status = AuctionStatus.COMPLETED
+                target_auction.final_price = price
+                target_slot.status = TimeSlotStatus.BOOKED
+                
+                # Deduct
+                agent.token_balance -= price
+                
+                new_booking = Booking(
+                    id=str(uuid.uuid4()),
+                    agent_id=agent.id,
+                    time_slot_id=target_slot.id,
+                    price=price,
+                    status="confirmed",
+                    booked_at=current_date
+                )
+                db.add(new_booking)
+                actions_taken += 1
+                
+                # Remove from candidates for this tick so others don't double book
+                try:
+                    candidates.remove(best_candidate)
+                except ValueError:
+                    pass # Already removed? Should not happen in single thread but safe to ignore
+                
+    await db.commit()
+    return actions_taken
+                
+    await db.commit()
+    return actions_taken
