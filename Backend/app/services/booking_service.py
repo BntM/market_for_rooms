@@ -98,8 +98,13 @@ async def create_booking_from_bid(
         db.add(booking)
         bookings.append(booking)
 
-    # Mark slot as booked after any successful booking
+    # Mark slot as booked only when at full capacity
     if bookings:
-        slot.status = TimeSlotStatus.BOOKED
+        total_bookings_result = await db.execute(
+            select(func.count()).select_from(Booking).where(Booking.time_slot_id == slot.id)
+        )
+        total_bookings = total_bookings_result.scalar()
+        if total_bookings >= resource.capacity:
+            slot.status = TimeSlotStatus.BOOKED
 
     return bookings
